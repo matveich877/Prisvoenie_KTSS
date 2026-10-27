@@ -53,7 +53,7 @@ th { background: #f3f4f6; }
 <div id="adminSection" style="display:none">
 
 <div class="card">
-  <h2>📊 Статистика</h2>
+  <h2> Статистика</h2>
   <div class="stats-grid" id="statsGrid"></div>
   <button class="btn btn-sec" onclick="exportAllStats()">📥 Экспорт всей статистики (CSV)</button>
   <button class="btn btn-warn" onclick="if(confirm('Очистить всю статистику?')){localStorage.removeItem('activations');localStorage.removeItem('localStats');renderStats();}">🗑 Очистить статистику</button>
@@ -108,7 +108,7 @@ th { background: #f3f4f6; }
 </div>
 
 <div class="card">
-  <h2>👥 Активации (кто использовал ключи)</h2>
+  <h2> Активации (кто использовал ключи)</h2>
   <button class="btn btn-sec" onclick="renderActivations()">🔄 Обновить</button>
   <div id="activationsList"></div>
 </div>
