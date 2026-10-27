@@ -41,17 +41,14 @@ tr.invalid td{color:#991b1b}
 .tab{padding:7px 13px;cursor:pointer;border-radius:6px 6px 0 0;background:#e5e7eb;font-size:13px;transition:all 0.2s}
 .tab:hover{background:#d1d5db}
 .tab.active{background:var(--accent);color:#fff}
-.hidden{display:none}
-.hint{font-size:11px;color:#6b7280;margin-top:4px;padding:6px;background:#fefce8;border-left:3px solid #eab308;border-radius:3px}
-.hint.ok{background:#f0fdf4;border-color:var(--ok);color:#166534}
-.alerts{margin-top:10px}
-.alert{padding:8px 12px;border-radius:6px;margin-bottom:6px;font-size:13px}
-.alert.err{background:#fef2f2;color:#991b1b;border-left:4px solid var(--warn)}
-.alert.warn{background:#fefce8;color:#854d0e;border-left:4px solid #eab308}
-.alert.ok{background:#f0fdf4;color:#166534;border-left:4px solid var(--ok)}
-.license-info{display:inline-block;padding:4px 10px;background:#dbeafe;color:#1e40af;border-radius:12px;font-size:12px;font-weight:600;margin-left:10px}
-.license-info.premium{background:#dcfce7;color:#166534}
-.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:1000;justify-content:center;align-items:center;backdrop-filter:blur(4px)}
+.hidden{display:none !important}
+
+/* ИСПРАВЛЕНИЕ: z-index модального окна теперь 10000, чтобы быть поверх всего */
+.modal{
+  display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,0.6);z-index:10000;
+  justify-content:center;align-items:center;backdrop-filter:blur(4px);
+}
 .modal.active{display:flex}
 .modal-content{background:#fff;border-radius:12px;padding:24px;max-width:500px;width:90%;box-shadow:0 10px 40px rgba(0,0,0,0.3);animation:modalSlideIn 0.3s ease-out;max-height:90vh;overflow-y:auto}
 @keyframes modalSlideIn{from{transform:translateY(-50px);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -62,7 +59,14 @@ tr.invalid td{color:#991b1b}
 .key-input{font-family:monospace;font-size:16px;letter-spacing:2px;text-align:center;padding:10px}
 .key-info{background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:12px;margin:12px 0;font-size:13px}
 .key-info strong{color:var(--accent)}
-.blocked-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:2000;display:flex;justify-content:center;align-items:center;backdrop-filter:blur(8px)}
+
+/* Оверлей блокировки */
+.blocked-overlay{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,0.85);z-index:5000;
+  display:none;justify-content:center;align-items:center;backdrop-filter:blur(8px);
+}
+.blocked-overlay.active{display:flex}
 .blocked-content{background:#fff;border-radius:16px;padding:40px;max-width:600px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
 .blocked-content h2{color:var(--warn);font-size:24px;margin-bottom:20px}
 .blocked-content p{font-size:16px;line-height:1.6;margin-bottom:20px}
@@ -209,6 +213,7 @@ tr.invalid td{color:#991b1b}
 </div>
 </div>
 
+<!-- Модальное окно активации -->
 <div id="keyModal" class="modal">
   <div class="modal-content">
     <span class="close" onclick="closeKeyModal()">&times;</span>
@@ -217,7 +222,8 @@ tr.invalid td{color:#991b1b}
   </div>
 </div>
 
-<div id="blockedOverlay" class="blocked-overlay hidden">
+<!-- Оверлей блокировки -->
+<div id="blockedOverlay" class="blocked-overlay">
   <div class="blocked-content">
     <h2>🔒 Доступ ограничен</h2>
     <p>Вы использовали все бесплатные выгрузки документов.</p>
@@ -227,173 +233,83 @@ tr.invalid td{color:#991b1b}
 </div>
 
 <script>
-// ============ СИСТЕМА ЛИЦЕНЗИРОВАНИЯ (актуально на 2026 год) ============
+// ============ СИСТЕМА ЛИЦЕНЗИРОВАНИЯ ============
 const LICENSE = {
   FREE_EXPORTS: 1,
-  
-  // АКТУАЛЬНЫЕ КЛЮЧИ (на октябрь 2026)
   KEYS: {
-    // Универсальный бессрочный мастер-ключ (ваш личный)
-    'KARATE-UNIVERSAL-MASTER': {
-      type: 'universal',
-      description: 'Универсальный бессрочный ключ',
-      maxExports: -1,
-      expiresAt: '2099-12-31',
-      maxDevices: -1
-    },
-    // Тестовые ключи (актуальны до конца 2028)
-    'KARATE-TEST-2026-001': {
-      type: 'test',
-      description: 'Тестовый ключ №1 (10 выгрузок)',
-      maxExports: 10,
-      expiresAt: '2028-12-31',
-      maxDevices: 1
-    },
-    'KARATE-TEST-2026-002': {
-      type: 'test',
-      description: 'Тестовый ключ №2 (10 выгрузок)',
-      maxExports: 10,
-      expiresAt: '2028-12-31',
-      maxDevices: 1
-    },
-    'KARATE-TEST-2026-003': {
-      type: 'test',
-      description: 'Тестовый ключ №3 (10 выгрузок)',
-      maxExports: 10,
-      expiresAt: '2028-12-31',
-      maxDevices: 1
-    },
-    // Премиум ключ (актуален до конца 2028)
-    'KARATE-PREMIUM-2026': {
-      type: 'premium',
-      description: 'Премиум доступ (безлимит)',
-      maxExports: -1,
-      expiresAt: '2028-12-31',
-      maxDevices: 3
-    }
+    'KARATE-UNIVERSAL-MASTER': {type:'universal',description:'Универсальный бессрочный ключ',maxExports:-1,expiresAt:'2099-12-31',maxDevices:-1},
+    'KARATE-TEST-2026-001': {type:'test',description:'Тестовый ключ №1 (10 выгрузок)',maxExports:10,expiresAt:'2028-12-31',maxDevices:1},
+    'KARATE-TEST-2026-002': {type:'test',description:'Тестовый ключ №2 (10 выгрузок)',maxExports:10,expiresAt:'2028-12-31',maxDevices:1},
+    'KARATE-TEST-2026-003': {type:'test',description:'Тестовый ключ №3 (10 выгрузок)',maxExports:10,expiresAt:'2028-12-31',maxDevices:1},
+    'KARATE-PREMIUM-2026': {type:'premium',description:'Премиум доступ (безлимит)',maxExports:-1,expiresAt:'2028-12-31',maxDevices:3}
   },
-  
   getExportCount(){return parseInt(localStorage.getItem('exportCount')||'0')},
   incrementExportCount(){const c=this.getExportCount()+1;localStorage.setItem('exportCount',c.toString());return c},
   getLicenseData(){const d=localStorage.getItem('licenseData');return d?JSON.parse(d):null},
-  
   isPremium(){
     const ld=this.getLicenseData();
     if(!ld)return false;
     const k=this.KEYS[ld.key];
     if(!k)return false;
-    if(new Date(k.expiresAt)<new Date()){
-      this.revokeLicense('Срок действия ключа истёк');
-      return false;
-    }
+    if(new Date(k.expiresAt)<new Date()){this.revokeLicense('Срок действия ключа истёк');return false}
     if(k.maxExports!==-1&&this.getExportCount()>=k.maxExports)return false;
     return true;
   },
-  
   canExport(){
     const ld=this.getLicenseData();
-    if(ld){
-      const k=this.KEYS[ld.key];
-      if(k&&k.maxExports===-1)return true;
-      if(k&&this.getExportCount()<k.maxExports)return true;
-    }
+    if(ld){const k=this.KEYS[ld.key];if(k&&k.maxExports===-1)return true;if(k&&this.getExportCount()<k.maxExports)return true}
     return this.getExportCount()<this.FREE_EXPORTS;
   },
-  
   activateKey(key,email){
-    key=key.trim().toUpperCase();
-    email=email.trim().toLowerCase();
-    
-    if(!this.KEYS[key]){
-      return{success:false,error:' Неверный ключ. Проверьте правильность ввода.'};
-    }
-    if(!email){
-      return{success:false,error:'❌ Введите email для привязки ключа'};
-    }
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
-      return{success:false,error:'❌ Некорректный email. Пример: user@mail.ru'};
-    }
-    
+    key=key.trim().toUpperCase();email=email.trim().toLowerCase();
+    if(!this.KEYS[key])return{success:false,error:'❌ Неверный ключ. Проверьте правильность ввода.'};
+    if(!email)return{success:false,error:'❌ Введите email для привязки ключа'};
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return{success:false,error:'❌ Некорректный email. Пример: user@mail.ru'};
     const k=this.KEYS[key];
-    if(new Date(k.expiresAt)<new Date()){
-      return{success:false,error:`❌ Срок действия ключа истёк (${k.expiresAt}). Обратитесь к администратору.`};
-    }
-    
+    if(new Date(k.expiresAt)<new Date())return{success:false,error:`❌ Срок действия ключа истёк (${k.expiresAt}). Обратитесь к администратору.`};
     const deviceId=this.getDeviceId();
     const activations=JSON.parse(localStorage.getItem('activations')||'{}');
-    
     if(activations[key]){
       const ex=activations[key];
-      if(ex.email!==email){
-        return{success:false,error:`❌ Ключ уже привязан к другому email: ${ex.email}. Обратитесь к администратору для сброса.`};
-      }
-      if(ex.deviceId!==deviceId&&k.maxDevices!==-1){
-        return{success:false,error:' Ключ уже используется на другом устройстве'};
-      }
+      if(ex.email!==email)return{success:false,error:`❌ Ключ уже привязан к другому email: ${ex.email}. Обратитесь к администратору для сброса.`};
+      if(ex.deviceId!==deviceId&&k.maxDevices!==-1)return{success:false,error:'❌ Ключ уже используется на другом устройстве'};
     }
-    
-    localStorage.setItem('licenseData',JSON.stringify({
-      key,email,deviceId,
-      activatedAt:new Date().toISOString()
-    }));
-    
-    activations[key]={
-      email,deviceId,
-      activatedAt:new Date().toISOString(),
-      type:k.type,
-      description:k.description
-    };
+    localStorage.setItem('licenseData',JSON.stringify({key,email,deviceId,activatedAt:new Date().toISOString()}));
+    activations[key]={email,deviceId,activatedAt:new Date().toISOString(),type:k.type,description:k.description};
     localStorage.setItem('activations',JSON.stringify(activations));
-    
     if(k.maxExports===-1)localStorage.setItem('exportCount','0');
-    
     return{success:true,keyData:k,email};
   },
-  
-  revokeLicense(reason){
-    localStorage.removeItem('licenseData');
-    if(reason)alert(`⚠ Лицензия отозвана: ${reason}`);
-  },
-  
-  getDeviceId(){
-    return btoa(navigator.userAgent+screen.width+screen.height+navigator.language+navigator.hardwareConcurrency).substring(0,20);
-  },
-  
-  resetLicense(){
-    localStorage.removeItem('licenseData');
-    localStorage.removeItem('exportCount');
-  }
+  revokeLicense(reason){localStorage.removeItem('licenseData');if(reason)alert(`⚠ Лицензия отозвана: ${reason}`)},
+  getDeviceId(){return btoa(navigator.userAgent+screen.width+screen.height+navigator.language+navigator.hardwareConcurrency).substring(0,20)},
+  resetLicense(){localStorage.removeItem('licenseData');localStorage.removeItem('exportCount')}
 };
 
 function checkLicense(){
   const badge=document.getElementById('licenseBadge'),bw=document.getElementById('btnWord'),bp=document.getElementById('btnPDF'),bo=document.getElementById('blockedOverlay');
   const ld=LICENSE.getLicenseData();
   if(ld&&LICENSE.isPremium()){
-    const k=LICENSE.KEYS[ld.key];
-    badge.textContent='✓ Премиум';
-    badge.classList.add('premium');
-    bw.disabled=false;
-    bp.disabled=false;
-    bo.classList.add('hidden');
+    badge.textContent='✓ Премиум';badge.classList.add('premium');
+    if(bw)bw.disabled=false;if(bp)bp.disabled=false;
+    if(bo){bo.style.display='none';bo.classList.remove('active');}
   }else{
     const c=LICENSE.getExportCount(),r=LICENSE.FREE_EXPORTS-c;
     if(r>0){
       badge.textContent=`Пробная (${r} выгруз${r===1?'ка':r<5?'ки':'ок'} осталось)`;
-      bw.disabled=false;
-      bp.disabled=false;
-      bo.classList.add('hidden');
+      if(bw)bw.disabled=false;if(bp)bp.disabled=false;
+      if(bo){bo.style.display='none';bo.classList.remove('active');}
     }else{
       badge.textContent='Пробная (завершена)';
-      bw.disabled=true;
-      bp.disabled=true;
-      bo.classList.remove('hidden');
+      if(bw)bw.disabled=true;if(bp)bp.disabled=true;
+      if(bo){bo.style.display='flex';bo.classList.add('active');}
     }
   }
 }
 
 function showKeyModal(){
-  // ВАЖНО: скрываем оверлей блокировки при открытии окна активации
-  document.getElementById('blockedOverlay').classList.add('hidden');
+  // ГАРАНТИРОВАННО скрываем оверлей блокировки
+  const bo = document.getElementById('blockedOverlay');
+  if(bo){bo.style.display='none';bo.classList.remove('active');}
   
   const modal=document.getElementById('keyModal'),content=document.getElementById('keyModalContent');
   const ld=LICENSE.getLicenseData();
@@ -415,26 +331,20 @@ function showKeyModal(){
     const c=LICENSE.getExportCount(),r=LICENSE.FREE_EXPORTS-c;
     content.innerHTML=`
       <p><strong>Пробная версия:</strong> ${r>0?`Осталось ${r} выгруз${r===1?'ка':r<5?'ки':'ок'}`:'Лимит исчерпан'}</p>
-      
       <div class="key-info">
         <strong>Для активации введите:</strong><br>
         1. Ваш email (для привязки ключа)<br>
         2. Ключ активации от администратора СК
       </div>
-      
       <label>Email:</label>
       <input type="email" id="emailInput" placeholder="your@email.com" style="margin:8px 0">
-      
       <label>Ключ активации:</label>
       <input type="text" id="keyInput" class="key-input" placeholder="XXXX-XXXX-XXXX-XXXX" style="margin:8px 0">
-      
       <div id="keyError" class="alert err hidden"></div>
-      
       <button class="btn btn-ok" onclick="activateKey()">Активировать</button>
       <button class="btn btn-sec" onclick="closeKeyModal()">Закрыть</button>
-      
       <details style="margin-top:16px;font-size:12px;color:#6b7280">
-        <summary style="cursor:pointer;font-weight:bold"> Тестовые ключи (для разработчика)</summary>
+        <summary style="cursor:pointer;font-weight:bold">🔑 Тестовые ключи (для разработчика)</summary>
         <div style="margin-top:8px;padding:10px;background:#f0f9ff;border-radius:6px;border:1px solid #bae6fd">
           <p style="margin:4px 0"><strong>♾ Бессрочный:</strong><br><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-UNIVERSAL-MASTER</code></p>
           <p style="margin:8px 0 4px"><strong>🧪 Тестовые (до 2028):</strong></p>
@@ -442,55 +352,39 @@ function showKeyModal(){
           <p style="margin:2px 0"><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-TEST-2026-002</code></p>
           <p style="margin:2px 0"><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-TEST-2026-003</code></p>
           <p style="margin:8px 0 4px"><strong>💎 Премиум (до 2028):</strong><br><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-PREMIUM-2026</code></p>
-          <p style="margin-top:10px;padding:6px;background:#fefce8;border-radius:4px;font-size:11px">
-            ⚠️ <strong>Важно:</strong> для активации обязательно укажите ваш email — ключ привязывается к нему.
-          </p>
         </div>
       </details>
     `;
   }
-  
-  modal.classList.add('active');
+  if(modal){modal.style.display='flex';modal.classList.add('active');}
 }
 
 function closeKeyModal(){
-  document.getElementById('keyModal').classList.remove('active');
+  const modal=document.getElementById('keyModal');
+  if(modal){modal.style.display='none';modal.classList.remove('active');}
 }
 
 function activateKey(){
   const emailInput=document.getElementById('emailInput');
   const keyInput=document.getElementById('keyInput');
   const errorDiv=document.getElementById('keyError');
-  
-  if(!emailInput||!keyInput||!errorDiv){
-    console.error('Элементы формы не найдены');
-    return;
-  }
+  if(!emailInput||!keyInput||!errorDiv)return;
   
   if(!emailInput.value.trim()){
     errorDiv.textContent='❌ Введите email для привязки ключа';
-    errorDiv.classList.remove('hidden');
-    emailInput.focus();
-    return;
+    errorDiv.classList.remove('hidden');emailInput.focus();return;
   }
-  
   if(!keyInput.value.trim()){
     errorDiv.textContent='❌ Введите ключ активации';
-    errorDiv.classList.remove('hidden');
-    keyInput.focus();
-    return;
+    errorDiv.classList.remove('hidden');keyInput.focus();return;
   }
   
   const result=LICENSE.activateKey(keyInput.value,emailInput.value);
-  
   if(result.success){
-    closeKeyModal();
-    checkLicense();
+    closeKeyModal();checkLicense();
     alert(`✓ Лицензия активирована!\n\nEmail: ${result.email}\n${result.keyData.description}\n${result.keyData.maxExports===-1?'Выгрузок: безлимит':'Выгрузок: '+result.keyData.maxExports}`);
   }else{
-    errorDiv.textContent=result.error;
-    errorDiv.classList.remove('hidden');
-    console.log('Ошибка активации:',result.error);
+    errorDiv.textContent=result.error;errorDiv.classList.remove('hidden');
   }
 }
 
@@ -514,7 +408,7 @@ function onCategoryChange(){const jc=document.getElementById('currentCat').value
 function render(){const cat=document.getElementById('category').value,req=KT[cat],jc=document.getElementById('currentCat').value;let alertsHtml='';if(!jc)alertsHtml+=`<div class="alert warn">⚠ Укажите действующую категорию судьи</div>`;if(cat==='ВК'){const e=tournaments.filter(t=>t.grade==='отлично').length;if(e<16)alertsHtml+=`<div class="alert warn">⚠ Для ВК нужно 16 «отлично», сейчас: ${e}</div>`}if(jc){const inv=tournaments.filter(t=>!checkRecord(t,jc).ok);if(inv.length>0)alertsHtml+=`<div class="alert err">⚠ Несоответствие КТ: ${inv.length} турниров с недопустимыми должностями</div>`;else if(tournaments.length>0)alertsHtml+=`<div class="alert ok">✓ Все должности соответствуют категории «${jc}»</div>`}if(!alertsHtml)alertsHtml=`<div class="alert ok">✓ Проверки пройдены</div>`;document.getElementById('alerts').innerHTML=alertsHtml;let h='';if(req.note&&req.groups.length===0)h+=`<div class="req-block"><b>Условие:</b> ${req.note}</div>`;req.groups.forEach(g=>{const c=countGroup(g),d=c>=g.need;h+=`<div class="req-block ${d?'done':'miss'}"><b>${g.name}</b> — нужно <b>${g.need}</b>, есть <b>${c}</b>${g.note?`<div style="font-size:11px;color:#6b7280">(${g.note})</div>`:''}<div class="progress"><div class="progress-bar" style="width:${Math.min(100,c/g.need*100)}%"></div></div></div>`});document.getElementById('requirements').innerHTML=h;const t=tournaments.length,e=tournaments.filter(t=>t.grade==='отлично').length;document.getElementById('summary').innerHTML=`<div class="summary-item"><div class="num">${t}</div><div class="lbl">Всего (нужно ${req.minTotal})</div></div><div class="summary-item"><div class="num">${e}</div><div class="lbl">«Отлично» (нужно ${req.minExcellent})</div></div><div class="summary-item"><div class="num">${req.period}</div><div class="lbl">Период</div></div>`;renderTournaments();renderTheory();renderExam();renderCats();renderPreview()}
 function countGroup(g){return tournaments.filter(t=>g.positions.includes(t.position)&&g.levels.includes(t.status)).length}
 
-function renderTournaments(){const jc=document.getElementById('currentCat').value;let h=`<button class="btn" onclick="addTournament()">+ Турнир</button><button class="btn btn-sec" onclick="loadExample()">📋 Пример Матвеева</button>`;if(jc)h+=`<div class="hint ok"> Категория судьи: <b>${jc}</b>. В списке должностей показываются ТОЛЬКО допустимые.</div>`;else h+=`<div class="hint">ℹ Укажите действующую категорию судьи.</div>`;h+=`<table class="data"><thead><tr><th>Дата</th><th>Место</th><th>Статус</th><th>Полное наименование</th><th>Должность</th><th>Оценка</th><th></th></tr></thead><tbody>`;tournaments.forEach((t,i)=>{const allowed=getAllowedPositions(jc,t.status);const check=checkRecord(t,jc);let positionsList;if(allowed.length===0)positionsList=[t.position,...POSITIONS.filter(p=>p!==t.position)];else if(allowed.includes(t.position))positionsList=allowed;else positionsList=[t.position,...allowed];const rowClass=check.ok?'':'invalid';const warnBadge=!check.ok?`<span class="warn-badge" title="${check.msg}"></span>`:'';h+=`<tr class="${rowClass}"><td><input value="${t.date}" onchange="tournaments[${i}].date=this.value;render()"></td><td><input value="${t.place}" onchange="tournaments[${i}].place=this.value;render()"></td><td><select onchange="changeStatus(${i},this.value)">${STATUSES.map(s=>`<option ${s===t.status?'selected':''}>${s}</option>`).join('')}</select></td><td><input value="${t.fullName||''}" onchange="tournaments[${i}].fullName=this.value;render()"></td><td><select onchange="tournaments[${i}].position=this.value;render()">${positionsList.map(p=>`<option ${p===t.position?'selected':''}>${p}</option>`).join('')}</select>${warnBadge}</td><td><select onchange="tournaments[${i}].grade=this.value;render()">${GRADES.map(g=>`<option ${g===t.grade?'selected':''}>${g}</option>`).join('')}</select></td><td><button class="btn btn-warn" onclick="tournaments.splice(${i},1);render()">✕</button></td></tr>`});h+='</tbody></table>';document.getElementById('tournaments').innerHTML=h}
+function renderTournaments(){const jc=document.getElementById('currentCat').value;let h=`<button class="btn" onclick="addTournament()">+ Турнир</button><button class="btn btn-sec" onclick="loadExample()">📋 Пример Матвеева</button>`;if(jc)h+=`<div class="hint ok">ℹ Категория судьи: <b>${jc}</b>. В списке должностей показываются ТОЛЬКО допустимые.</div>`;else h+=`<div class="hint">ℹ Укажите действующую категорию судьи.</div>`;h+=`<table class="data"><thead><tr><th>Дата</th><th>Место</th><th>Статус</th><th>Полное наименование</th><th>Должность</th><th>Оценка</th><th></th></tr></thead><tbody>`;tournaments.forEach((t,i)=>{const allowed=getAllowedPositions(jc,t.status);const check=checkRecord(t,jc);let positionsList;if(allowed.length===0)positionsList=[t.position,...POSITIONS.filter(p=>p!==t.position)];else if(allowed.includes(t.position))positionsList=allowed;else positionsList=[t.position,...allowed];const rowClass=check.ok?'':'invalid';const warnBadge=!check.ok?`<span class="warn-badge" title="${check.msg}">⚠</span>`:'';h+=`<tr class="${rowClass}"><td><input value="${t.date}" onchange="tournaments[${i}].date=this.value;render()"></td><td><input value="${t.place}" onchange="tournaments[${i}].place=this.value;render()"></td><td><select onchange="changeStatus(${i},this.value)">${STATUSES.map(s=>`<option ${s===t.status?'selected':''}>${s}</option>`).join('')}</select></td><td><input value="${t.fullName||''}" onchange="tournaments[${i}].fullName=this.value;render()"></td><td><select onchange="tournaments[${i}].position=this.value;render()">${positionsList.map(p=>`<option ${p===t.position?'selected':''}>${p}</option>`).join('')}</select>${warnBadge}</td><td><select onchange="tournaments[${i}].grade=this.value;render()">${GRADES.map(g=>`<option ${g===t.grade?'selected':''}>${g}</option>`).join('')}</select></td><td><button class="btn btn-warn" onclick="tournaments.splice(${i},1);render()">✕</button></td></tr>`});h+='</tbody></table>';document.getElementById('tournaments').innerHTML=h}
 function changeStatus(i,ns){tournaments[i].status=ns;const jc=document.getElementById('currentCat').value,al=getAllowedPositions(jc,ns);if(al.length>0&&!al.includes(tournaments[i].position))tournaments[i].position=al[0];render()}
 function renderTheory(){let h=`<button class="btn" onclick="addTheory()">+ Занятие</button><table class="data"><thead><tr><th>Дата</th><th>Роль</th><th>Место</th><th>Описание</th><th>Оценка</th><th></th></tr></thead><tbody>`;theory.forEach((t,i)=>{h+=`<tr><td><input value="${t.date}" onchange="theory[${i}].date=this.value"></td><td><select onchange="theory[${i}].role=this.value"><option ${t.role==='Участник'?'selected':''}>Участник</option><option ${t.role==='Лектор'?'selected':''}>Лектор</option></select></td><td><input value="${t.place}" onchange="theory[${i}].place=this.value"></td><td><input value="${t.description||''}" onchange="theory[${i}].description=this.value"></td><td><input value="${t.grade}" onchange="theory[${i}].grade=this.value"></td><td><button class="btn btn-warn" onclick="theory.splice(${i},1);render()">✕</button></td></tr>`});h+='</tbody></table>';document.getElementById('theory').innerHTML=h}
 function renderExam(){let h=`<button class="btn" onclick="addExam()">+ Зачёт</button><table class="data"><thead><tr><th>Дата</th><th>Место</th><th>№ протокола</th><th>Тест</th><th>Видеотест ката</th><th></th></tr></thead><tbody>`;exams.forEach((e,i)=>{h+=`<tr><td><input value="${e.date}" onchange="exams[${i}].date=this.value"></td><td><input value="${e.place}" onchange="exams[${i}].place=this.value"></td><td><input value="${e.protocol||''}" onchange="exams[${i}].protocol=this.value"></td><td><input value="${e.testGrade||''}" onchange="exams[${i}].testGrade=this.value"></td><td><input value="${e.kataGrade||''}" onchange="exams[${i}].kataGrade=this.value"></td><td><button class="btn btn-warn" onclick="exams.splice(${i},1);render()">✕</button></td></tr>`});h+='</tbody></table>';document.getElementById('exam').innerHTML=h}
@@ -532,7 +426,6 @@ function getD(){const ids=['category','currentCat','currentCatDate','currentCatD
 function fmtDate(d){if(!d)return'___.___.______';const[y,m,day]=d.split('-');return`${day}.${m}.${y}`}
 const CAT_FULL={'ВК':'спортивный судья всероссийской категории','1К':'спортивный судья первой категории','2К':'спортивный судья второй категории','3К':'спортивный судья третьей категории','ЮС':'юный спортивный судья'};
 
-// ============ ГЕНЕРАЦИЯ ДОКУМЕНТОВ (4 страницы) ============
 function buildPage1_Presentation(d){const th=theory.slice(-3);while(th.length<3)th.push({date:'',place:'',description:'',grade:''});const catName=CAT_FULL[d.category],ccn=d.currentCat?(CAT_FULL[d.currentCat]||d.currentCat):'';const stt=d.sportTitle==='МС'?'Мастер спорта РФ по '+d.sport:(d.sportTitle==='МСМК'?'Мастер спорта РФ международного класса по '+d.sport:'');const tournRows=tournaments.map(t=>`<tr><td style="width:18%;padding:1px 2px;font-size:7pt">${t.date}</td><td style="width:54%;padding:1px 2px;font-size:7pt">${t.fullName||t.status}<br><i style="font-size:6pt">${t.status}</i></td><td style="width:28%;padding:1px 2px;font-size:7pt">${t.position}<br>${t.grade}</td></tr>`).join('');let signBlock='';if(d.category==='ВК'){signBlock=`<table style="width:100%;border-collapse:collapse;border:none;font-size:7.5pt;margin-top:6px"><tr><td style="border:none;padding:2px 0;width:50%"><p style="margin:0">_____________________________________________</p><p class="small" style="margin:0">Наименование региональной спортивной федерации</p><p style="margin:2px 0 0 0">${d.fedName||''}</p><p style="margin:1px 0">________________ ________________</p><p class="small" style="margin:0">Должность (Фамилия, инициалы)</p><p style="margin:0">${d.fedPosition} ${d.fedPerson}</p><p style="margin:0">Дата ____________ Подпись ____________</p><p style="margin:0">Место печати (при наличии)</p></td><td style="border:none;padding:2px 0 2px 10px;width:50%"><p style="margin:0">____________________________________________________________</p><p class="small" style="margin:0">Наименование органа исполнительной власти субъекта РФ</p><p style="margin:2px 0 0 0">${d.govName}</p><p style="margin:1px 0">________________ ________________</p><p class="small" style="margin:0">Должность (Фамилия, инициалы)</p><p style="margin:0">${d.govPosition} ${d.govPerson}</p><p style="margin:0">Дата ____________ Подпись ____________</p><p style="margin:0">Место печати (при наличии)</p></td></tr><tr><td style="border:none;padding:2px 0" colspan="2"><p style="margin:4px 0 0 0"><b>Решение общероссийской спортивной федерации:</b></p><p style="margin:0">протокол от «_____» _______________ 20___ г. № _____</p></td></tr><tr><td style="border:none;padding:2px 0;width:50%"><p style="margin:0">_____________________________________________ ________________________</p><p class="small" style="margin:0">Руководитель общероссийской спортивной федерации</p><p style="margin:0">${d.osfHead||''}</p><p style="margin:0">Дата ____________ Подпись ____________</p></td><td style="border:none;padding:2px 0 2px 10px;width:50%"><p style="margin:0">____________________ _____________________ _______________</p><p class="small" style="margin:0">Должностное лицо Подпись</p><p style="margin:0">Место печати (при наличии)</p></td></tr><tr><td style="border:none;padding:2px 0" colspan="2"><p style="margin:0">Ответственный исполнитель _____________________ _______________</p><p class="small" style="margin:0">(Фамилия, инициалы) Подпись</p><p style="margin:0">${d.respPerson||''}</p></td></tr></table>`}else{signBlock=`<table style="width:100%;border-collapse:collapse;border:none;font-size:7.5pt;margin-top:6px"><tr><td style="border:none;padding:2px 0"><p style="margin:0">_____________________________________________</p><p class="small" style="margin:0">Наименование региональной спортивной федерации</p><p style="margin:2px 0 0 0">${d.fedName||''}</p><p style="margin:1px 0">________________ ________________</p><p class="small" style="margin:0">Должность (Фамилия, инициалы)</p><p style="margin:0">${d.fedPosition} ${d.fedPerson}</p><p style="margin:0">Дата ____________ Подпись ____________</p><p style="margin:0">Место печати (при наличии)</p></td></tr></table>`}return`<div class="doc-page"><h1 class="doc-title">Представление к присвоению квалификационной категории спортивного судьи</h1><div class="cat-name">${catName}</div><table class="form" style="table-layout:fixed"><tr><td colspan="4" class="hdr">Дата поступления представления и документов</td><td colspan="2" class="hdr">фото 3×4</td><td colspan="5" class="hdr">Наименование действующей категории</td><td rowspan="15" style="vertical-align:top;padding:0;width:50%"><table style="width:100%;border-collapse:collapse;font-size:7pt"><tr><th style="border:1px solid #000;padding:1px 2px;background:#f0f0f0;width:18%">Сроки проведения</th><th style="border:1px solid #000;padding:1px 2px;background:#f0f0f0;width:54%">Наименование и статус</th><th style="border:1px solid #000;padding:1px 2px;background:#f0f0f0;width:28%">Статус судьи / Оценка</th></tr>${tournRows}</table></td></tr><tr><td colspan="4"></td><td colspan="2"><div class="photo-box">3×4</div></td><td colspan="5">${ccn}<br><br>Дата: ${fmtDate(d.currentCatDate)}<br>${d.currentCatDoc||''}</td></tr><tr><td class="hdr">Фамилия</td><td colspan="10">${d.lastName}</td></tr><tr><td class="hdr">Имя</td><td colspan="10">${d.firstName}</td></tr><tr><td class="hdr">Отчество (при наличии)</td><td colspan="10">${d.middleName}</td></tr><tr><td class="hdr">Дата рождения</td><td colspan="4">${fmtDate(d.birthDate)}</td><td class="hdr">Вид спорта</td><td colspan="5">${d.sport}</td></tr><tr><td class="hdr">Субъект РФ</td><td colspan="4">${d.region}</td><td class="hdr">Номер-код вид спорта</td><td colspan="5">${d.sportCode}</td></tr><tr><td class="hdr">Адрес (место жительства)</td><td colspan="4">${d.address}</td><td class="hdr">Организация, осуществляющая учёт</td><td colspan="5">${d.orgName}, ${d.orgAddress}</td></tr><tr><td class="hdr">Место работы, должность</td><td colspan="10">${d.workplace}</td></tr><tr><td class="hdr">Образование</td><td colspan="4">${d.education}</td><td class="hdr">Спортивное звание</td><td colspan="5">${stt}</td></tr><tr><td colspan="11" class="hdr">Участие в теоретических занятиях, сдача квалификационного зачета</td></tr><tr><td class="hdr center">№</td><td colspan="4" class="hdr">Дата</td><td colspan="5" class="hdr">Место проведения</td><td class="hdr">Оценка</td></tr>${th.map((t,i)=>`<tr><td class="center">${i+1}</td><td colspan="4">${t.date||''}</td><td colspan="5">${t.description||t.place||''}</td><td>${t.grade||''}</td></tr>`).join('')}</table>${signBlock}</div>`}
 
 function buildPage2_CardHeader(d){const cr=catsHistory.map(c=>`<tr><td>${c.cat}</td><td>${c.action}</td><td>${c.date}</td><td>${c.num||''}</td><td>${c.org||''}</td><td>${c.person||''}</td><td></td></tr>`).join('');const stt=d.sportTitle==='МС'?'Мастер спорта РФ по '+d.sport:(d.sportTitle==='МСМК'?'Мастер спорта РФ международного класса по '+d.sport:'');return`<div class="doc-page"><h1 class="doc-title">Карточка учёта судейской деятельности спортивного судьи</h1><table class="card-top"><tr><td class="hdr">Наименование вида спорта</td><td colspan="3">${d.sport}</td><td class="hdr">Номер-код вида спорта</td><td colspan="3">${d.sportCode}</td></tr><tr><td class="hdr">Фамилия</td><td colspan="3">${d.lastName}</td><td class="hdr">Имя</td><td colspan="3">${d.firstName}</td></tr><tr><td class="hdr">Отчество (при наличии)</td><td colspan="3">${d.middleName}</td><td class="hdr">Дата рождения</td><td colspan="3">${fmtDate(d.birthDate)}</td></tr><tr><td class="hdr">Субъект РФ</td><td colspan="3">${d.region}</td><td class="hdr">Муниципальное образование</td><td colspan="3">${d.municipality}</td></tr><tr><td class="hdr">Спортивное звание в данном виде спорта (при наличии)</td><td colspan="3">${stt}</td><td class="hdr">Дата начала судейской деятельности</td><td colspan="3">${fmtDate(d.judgeStartDate)}</td></tr><tr><td class="hdr">Образование</td><td colspan="3">${d.education}</td><td class="hdr">Место работы (учёбы), должность</td><td colspan="3">${d.workplace}</td></tr><tr><td class="hdr">Контактные телефоны, адрес электронной почты</td><td colspan="8">тел.: ${d.phone}; e-mail: ${d.email}</td></tr><tr><td class="hdr">Организация, осуществляющая учёт судейской деятельности спортивного судьи</td><td colspan="8"><table style="width:100%;border-collapse:collapse;border:none"><tr><td style="border:none;padding:0"><b>Наименование:</b> ${d.orgName}</td></tr><tr><td style="border:none;padding:0"><b>Адрес (место нахождения):</b> ${d.orgAddress}</td></tr><tr><td style="border:none;padding:0"><b>Телефон, адрес электронной почты:</b> ${d.orgContacts}</td></tr></table></td></tr></table><div class="section-title">Сведения о присвоении / подтверждении / лишении / восстановлении квалификационной категории спортивного судьи</div><table class="card-cats"><tr><th style="width:13%">Наименование квалификационной категории</th><th style="width:13%">Присвоена / подтверждена / лишена / восстановлена</th><th style="width:10%">Дата (число, месяц, год)</th><th style="width:8%">Реквизиты документа: №</th><th style="width:25%">Наименование организации, принявшей решение</th><th style="width:15%">Фамилия и инициалы должностного лица</th><th style="width:16%">Печать организации, подпись, ФИО лица, ответственного за оформление карточки учёта</th></tr>${cr}</table></div>`}
