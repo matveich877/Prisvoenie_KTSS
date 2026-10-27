@@ -59,6 +59,7 @@ tr.invalid td{color:#991b1b}
 .blocked-content h2{color:var(--warn);font-size:24px;margin-bottom:20px}
 .blocked-content p{font-size:16px;line-height:1.6;margin-bottom:20px}
 
+/* Стили документов */
 .doc-page{background:#fff;padding:5mm 5mm;font-family:'Times New Roman',Times,serif;font-size:9pt;color:#000;line-height:1.15;width:287mm;min-height:200mm;box-sizing:border-box;position:relative;page-break-after:always;break-after:page}
 .doc-page:last-child{page-break-after:auto}
 .doc-page h1.doc-title{text-align:center;font-size:11pt;font-weight:bold;margin:0 0 4px;text-transform:uppercase}
@@ -205,14 +206,14 @@ tr.invalid td{color:#991b1b}
 <div id="keyModal" class="modal">
   <div class="modal-content">
     <span class="close" onclick="closeKeyModal()">&times;</span>
-    <h3> Активация программы</h3>
+    <h3>🔑 Активация программы</h3>
     <div id="keyModalContent"></div>
   </div>
 </div>
 
 <div id="blockedOverlay" class="blocked-overlay">
   <div class="blocked-content">
-    <h2>🔒 Доступ ограничен</h2>
+    <h2> Доступ ограничен</h2>
     <p>Вы использовали все бесплатные выгрузки документов.</p>
     <p>Для продолжения работы введите ключ активации.</p>
     <button class="btn btn-ok" onclick="showKeyModal()" style="font-size:16px;padding:12px 24px">🔑 Ввести ключ активации</button>
@@ -256,17 +257,17 @@ const LICENSE = {
   activateKey(key,email){
     key=key.trim().toUpperCase();email=email.trim().toLowerCase();
     const allKeys=this.getAllValidKeys();
-    if(!allKeys[key])return{success:false,error:' Неверный ключ. Проверьте правильность ввода.'};
-    if(!email)return{success:false,error:'❌ Введите email для привязки ключа'};
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return{success:false,error:'❌ Некорректный email'};
+    if(!allKeys[key])return{success:false,error:'❌ Неверный ключ'};
+    if(!email)return{success:false,error:'❌ Введите email'};
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return{success:false,error:' Некорректный email'};
     const k=allKeys[key];
-    if(new Date(k.expiresAt)<new Date())return{success:false,error:`❌ Срок действия ключа истёк (${k.expiresAt})`};
+    if(new Date(k.expiresAt)<new Date())return{success:false,error:` Срок действия истёк (${k.expiresAt})`};
     const deviceId=this.getDeviceId();
     const activations=JSON.parse(localStorage.getItem('activations')||'{}');
     if(activations[key]){
       const ex=activations[key];
       if(ex.email!==email)return{success:false,error:`❌ Ключ уже привязан к другому email: ${ex.email}`};
-      if(ex.deviceId!==deviceId&&k.maxDevices!==-1)return{success:false,error:' Ключ уже используется на другом устройстве'};
+      if(ex.deviceId!==deviceId&&k.maxDevices!==-1)return{success:false,error:' Ключ используется на другом устройстве'};
     }
     localStorage.setItem('licenseData',JSON.stringify({key,email,deviceId,activatedAt:new Date().toISOString()}));
     activations[key]={email,deviceId,activatedAt:new Date().toISOString(),type:k.type,description:k.description};
@@ -279,48 +280,21 @@ const LICENSE = {
   resetLicense(){localStorage.removeItem('licenseData');localStorage.removeItem('exportCount')}
 };
 
-// ============ ФУНКЦИЯ СБРОСА ВСЕХ ДАННЫХ ============
 function resetAll(){
-  if(!confirm('️ Вы уверены, что хотите сбросить ВСЕ данные?\n\nБудут очищены:\n• Все личные данные (ФИО, адрес, работа)\n• Все турниры, теория, зачёты\n• История категорий\n• Данные организации и подписантов\n• Счётчик выгрузок\n\nЛицензия (ключ активации) будет СОХРАНЕНА.')){
-    return;
-  }
-  
-  // Очищаем все поля форм
+  if(!confirm('⚠️ Сбросить ВСЕ данные?\n\n• Личные данные\n• Турниры, теория, зачёты\n• История категорий\n• Данные организации\n\nЛицензия будет СОХРАНЕНА.'))return;
   const allInputs = document.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"]');
-  allInputs.forEach(input => {
-    if(input.id && input.id !== 'keyInput' && input.id !== 'emailInput'){
-      input.value = '';
-    }
-  });
-  
+  allInputs.forEach(input => { if(input.id && input.id !== 'keyInput' && input.id !== 'emailInput') input.value = ''; });
   const allDates = document.querySelectorAll('input[type="date"]');
-  allDates.forEach(input => {
-    if(input.id && input.id !== 'keyInput'){
-      input.value = '';
-    }
-  });
-  
-  // Сбрасываем селекты
+  allDates.forEach(input => { if(input.id && input.id !== 'keyInput') input.value = ''; });
   document.getElementById('category').value = 'ВК';
   document.getElementById('currentCat').value = '1К';
   document.getElementById('sportTitle').value = '';
   document.getElementById('education').value = 'высшее';
-  
-  // Очищаем массивы данных
-  tournaments = [];
-  theory = [];
-  exams = [];
-  catsHistory = [];
-  
-  // Сбрасываем счётчик выгрузок (но не лицензию!)
+  tournaments = []; theory = []; exams = []; catsHistory = [];
   localStorage.setItem('exportCount', '0');
   localStorage.removeItem('judgeDocs');
-  
-  // Перерисовываем интерфейс
-  render();
-  checkLicense();
-  
-  alert('✓ Все данные сброшены. Можете начать заполнение заново.');
+  render(); checkLicense();
+  alert('✓ Все данные сброшены');
 }
 
 function checkLicense(){
@@ -354,7 +328,7 @@ function showKeyModal(){
     content.innerHTML=`<div class="key-info"><strong>✓ Программа активирована!</strong><br>Ключ: <code>${ld.key}</code><br>Email: <b>${ld.email}</b><br>Тип: ${k?.description||'Неизвестно'}<br>Активирован: ${new Date(ld.activatedAt).toLocaleString('ru-RU')}</div><button class="btn btn-warn" onclick="if(confirm('Сбросить лицензию?')){LICENSE.resetLicense();closeKeyModal();checkLicense();}">Сбросить лицензию</button><button class="btn btn-sec" onclick="closeKeyModal()">Закрыть</button>`;
   }else{
     const c=LICENSE.getExportCount(),r=LICENSE.FREE_EXPORTS-c;
-    content.innerHTML=`<p><strong>Пробная версия:</strong> ${r>0?`Осталось ${r} выгруз${r===1?'ка':r<5?'ки':'ок'}`:'Лимит исчерпан'}</p><div class="key-info"><strong>Для активации введите:</strong><br>1. Ваш email (для привязки ключа)<br>2. Ключ активации от администратора СК</div><label>Email:</label><input type="email" id="emailInput" placeholder="your@email.com" style="margin:8px 0"><label>Ключ активации:</label><input type="text" id="keyInput" class="key-input" placeholder="XXXX-XXXX-XXXX-XXXX" style="margin:8px 0"><div id="keyError" class="alert err hidden"></div><button class="btn btn-ok" onclick="activateKey()">Активировать</button><button class="btn btn-sec" onclick="closeKeyModal()">Закрыть</button><details style="margin-top:16px;font-size:12px;color:#6b7280"><summary style="cursor:pointer;font-weight:bold">🔑 Тестовые ключи (для разработчика)</summary><div style="margin-top:8px;padding:10px;background:#f0f9ff;border-radius:6px;border:1px solid #bae6fd"><p style="margin:4px 0"><strong>♾ Бессрочный:</strong><br><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-UNIVERSAL-MASTER</code></p><p style="margin:8px 0 4px"><strong>🧪 Тестовые (до 2028):</strong></p><p style="margin:2px 0"><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-TEST-2026-001</code></p><p style="margin:2px 0"><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-TEST-2026-002</code></p><p style="margin:2px 0"><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-TEST-2026-003</code></p><p style="margin:8px 0 4px"><strong>💎 Премиум (до 2028):</strong><br><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-PREMIUM-2026</code></p></div></details>`;
+    content.innerHTML=`<p><strong>Пробная версия:</strong> ${r>0?`Осталось ${r} выгруз${r===1?'ка':r<5?'ки':'ок'}`:'Лимит исчерпан'}</p><div class="key-info"><strong>Для активации введите:</strong><br>1. Ваш email (для привязки ключа)<br>2. Ключ активации от администратора СК</div><label>Email:</label><input type="email" id="emailInput" placeholder="your@email.com" style="margin:8px 0"><label>Ключ активации:</label><input type="text" id="keyInput" class="key-input" placeholder="XXXX-XXXX-XXXX-XXXX" style="margin:8px 0"><div id="keyError" class="alert err hidden"></div><button class="btn btn-ok" onclick="activateKey()">Активировать</button><button class="btn btn-sec" onclick="closeKeyModal()">Закрыть</button><details style="margin-top:16px;font-size:12px;color:#6b7280"><summary style="cursor:pointer;font-weight:bold">🔑 Тестовые ключи</summary><div style="margin-top:8px;padding:10px;background:#f0f9ff;border-radius:6px;border:1px solid #bae6fd"><p style="margin:4px 0"><strong>♾ Бессрочный:</strong><br><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-UNIVERSAL-MASTER</code></p><p style="margin:8px 0 4px"><strong>🧪 Тестовые (до 2028):</strong></p><p style="margin:2px 0"><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-TEST-2026-001</code></p><p style="margin:2px 0"><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-TEST-2026-002</code></p><p style="margin:2px 0"><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-TEST-2026-003</code></p><p style="margin:8px 0 4px"><strong>💎 Премиум (до 2028):</strong><br><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-PREMIUM-2026</code></p></div></details>`;
   }
   if(modal){modal.style.display='flex';modal.classList.add('active');}
 }
@@ -364,13 +338,13 @@ function activateKey(){
   const emailInput=document.getElementById('emailInput');const keyInput=document.getElementById('keyInput');const errorDiv=document.getElementById('keyError');
   if(!emailInput||!keyInput||!errorDiv)return;
   if(!emailInput.value.trim()){errorDiv.textContent='❌ Введите email';errorDiv.classList.remove('hidden');emailInput.focus();return}
-  if(!keyInput.value.trim()){errorDiv.textContent='❌ Введите ключ активации';errorDiv.classList.remove('hidden');keyInput.focus();return}
+  if(!keyInput.value.trim()){errorDiv.textContent='❌ Введите ключ';errorDiv.classList.remove('hidden');keyInput.focus();return}
   const result=LICENSE.activateKey(keyInput.value,emailInput.value);
   if(result.success){closeKeyModal();checkLicense();alert(`✓ Лицензия активирована!\n\nEmail: ${result.email}\n${result.keyData.description}`)}
   else{errorDiv.textContent=result.error;errorDiv.classList.remove('hidden')}
 }
 
-// ============ МАТРИЦА ДОЛЖНОСТЕЙ ============
+// ============ МАТРИЦА ДОЛЖНОСТЕЙ (КТ КАРАТЭ) ============
 const CAT_RANK={'ВК':5,'1К':4,'2К':3,'3К':2,'ЮС':1};
 const POSITIONS=['Главный судья','Главный секретарь','Зам. гл. судьи','Рефери','Арбитр','Судья','Судья-секретарь','Судья-хронометрист'];
 const STATUSES=['Чемпионат России','Кубок России','Первенство России','Всероссийская Спартакиада','Другие всероссийские','Международные','Чемпионат ФО','Первенство ФО','Другие межрегиональные','Чемпионат субъекта РФ','Кубок субъекта РФ','Первенство субъекта РФ','Другие соревнования субъекта РФ','Чемпионат муниципального образования','Первенство муниципального образования','Другие муниципальные'];
@@ -383,12 +357,12 @@ const KT={'ВК':{period:'3 года',periodYears:3,minTotal:21,minExcellent:16,
 
 let tournaments=[],theory=[],exams=[],catsHistory=[];
 
-function onCategoryChange(){const jc=document.getElementById('currentCat').value;if(!jc){render();return}let fixedCount=0;tournaments.forEach(t=>{const allowed=getAllowedPositions(jc,t.status);if(allowed.length===0)return;if(!allowed.includes(t.position)){t.position=allowed[0];fixedCount++}});if(fixedCount>0){setTimeout(()=>{alert(` Внимание!\n\nПри смене категории на «${jc}» автоматически исправлено должностей: ${fixedCount}.`)},100)}render()}
+function onCategoryChange(){const jc=document.getElementById('currentCat').value;if(!jc){render();return}let fixedCount=0;tournaments.forEach(t=>{const allowed=getAllowedPositions(jc,t.status);if(allowed.length===0)return;if(!allowed.includes(t.position)){t.position=allowed[0];fixedCount++}});if(fixedCount>0){setTimeout(()=>{alert(` При смене категории на «${jc}» исправлено должностей: ${fixedCount}.`)},100)}render()}
 
-function render(){const cat=document.getElementById('category').value,req=KT[cat],jc=document.getElementById('currentCat').value;let alertsHtml='';if(!jc)alertsHtml+=`<div class="alert warn"> Укажите действующую категорию судьи</div>`;if(cat==='ВК'){const e=tournaments.filter(t=>t.grade==='отлично').length;if(e<16)alertsHtml+=`<div class="alert warn">⚠ Для ВК нужно 16 «отлично», сейчас: ${e}</div>`}if(jc){const inv=tournaments.filter(t=>!checkRecord(t,jc).ok);if(inv.length>0)alertsHtml+=`<div class="alert err">⚠ Несоответствие КТ: ${inv.length} турниров с недопустимыми должностями</div>`;else if(tournaments.length>0)alertsHtml+=`<div class="alert ok">✓ Все должности соответствуют категории «${jc}»</div>`}if(!alertsHtml)alertsHtml=`<div class="alert ok">✓ Проверки пройдены</div>`;document.getElementById('alerts').innerHTML=alertsHtml;let h='';if(req.note&&req.groups.length===0)h+=`<div class="req-block"><b>Условие:</b> ${req.note}</div>`;req.groups.forEach(g=>{const c=countGroup(g),d=c>=g.need;h+=`<div class="req-block ${d?'done':'miss'}"><b>${g.name}</b> — нужно <b>${g.need}</b>, есть <b>${c}</b>${g.note?`<div style="font-size:11px;color:#6b7280">(${g.note})</div>`:''}<div class="progress"><div class="progress-bar" style="width:${Math.min(100,c/g.need*100)}%"></div></div></div>`});document.getElementById('requirements').innerHTML=h;const t=tournaments.length,e=tournaments.filter(t=>t.grade==='отлично').length;document.getElementById('summary').innerHTML=`<div class="summary-item"><div class="num">${t}</div><div class="lbl">Всего (нужно ${req.minTotal})</div></div><div class="summary-item"><div class="num">${e}</div><div class="lbl">«Отлично» (нужно ${req.minExcellent})</div></div><div class="summary-item"><div class="num">${req.period}</div><div class="lbl">Период</div></div>`;renderTournaments();renderTheory();renderExam();renderCats();renderPreview()}
+function render(){const cat=document.getElementById('category').value,req=KT[cat],jc=document.getElementById('currentCat').value;let alertsHtml='';if(!jc)alertsHtml+=`<div class="alert warn">⚠ Укажите действующую категорию судьи</div>`;if(cat==='ВК'){const e=tournaments.filter(t=>t.grade==='отлично').length;if(e<16)alertsHtml+=`<div class="alert warn"> Для ВК нужно 16 «отлично», сейчас: ${e}</div>`}if(jc){const inv=tournaments.filter(t=>!checkRecord(t,jc).ok);if(inv.length>0)alertsHtml+=`<div class="alert err"> Несоответствие КТ: ${inv.length} турниров с недопустимыми должностями</div>`;else if(tournaments.length>0)alertsHtml+=`<div class="alert ok">✓ Все должности соответствуют категории «${jc}»</div>`}if(!alertsHtml)alertsHtml=`<div class="alert ok">✓ Проверки пройдены</div>`;document.getElementById('alerts').innerHTML=alertsHtml;let h='';if(req.note&&req.groups.length===0)h+=`<div class="req-block"><b>Условие:</b> ${req.note}</div>`;req.groups.forEach(g=>{const c=countGroup(g),d=c>=g.need;h+=`<div class="req-block ${d?'done':'miss'}"><b>${g.name}</b> — нужно <b>${g.need}</b>, есть <b>${c}</b>${g.note?`<div style="font-size:11px;color:#6b7280">(${g.note})</div>`:''}<div class="progress"><div class="progress-bar" style="width:${Math.min(100,c/g.need*100)}%"></div></div></div>`});document.getElementById('requirements').innerHTML=h;const t=tournaments.length,e=tournaments.filter(t=>t.grade==='отлично').length;document.getElementById('summary').innerHTML=`<div class="summary-item"><div class="num">${t}</div><div class="lbl">Всего (нужно ${req.minTotal})</div></div><div class="summary-item"><div class="num">${e}</div><div class="lbl">«Отлично» (нужно ${req.minExcellent})</div></div><div class="summary-item"><div class="num">${req.period}</div><div class="lbl">Период</div></div>`;renderTournaments();renderTheory();renderExam();renderCats();renderPreview()}
 function countGroup(g){return tournaments.filter(t=>g.positions.includes(t.position)&&g.levels.includes(t.status)).length}
 
-function renderTournaments(){const jc=document.getElementById('currentCat').value;let h=`<button class="btn" onclick="addTournament()">+ Турнир</button><button class="btn btn-sec" onclick="loadExample()"> Пример Матвеева</button>`;if(jc)h+=`<div class="hint ok">ℹ Категория судьи: <b>${jc}</b>. В списке должностей показываются ТОЛЬКО допустимые.</div>`;else h+=`<div class="hint">ℹ Укажите действующую категорию судьи.</div>`;h+=`<table class="data"><thead><tr><th>Дата</th><th>Место</th><th>Статус</th><th>Полное наименование</th><th>Должность</th><th>Оценка</th><th></th></tr></thead><tbody>`;tournaments.forEach((t,i)=>{const allowed=getAllowedPositions(jc,t.status);const check=checkRecord(t,jc);let positionsList;if(allowed.length===0)positionsList=[t.position,...POSITIONS.filter(p=>p!==t.position)];else if(allowed.includes(t.position))positionsList=allowed;else positionsList=[t.position,...allowed];const rowClass=check.ok?'':'invalid';const warnBadge=!check.ok?`<span class="warn-badge" title="${check.msg}">⚠</span>`:'';h+=`<tr class="${rowClass}"><td><input value="${t.date}" onchange="tournaments[${i}].date=this.value;render()"></td><td><input value="${t.place}" onchange="tournaments[${i}].place=this.value;render()"></td><td><select onchange="changeStatus(${i},this.value)">${STATUSES.map(s=>`<option ${s===t.status?'selected':''}>${s}</option>`).join('')}</select></td><td><input value="${t.fullName||''}" onchange="tournaments[${i}].fullName=this.value;render()"></td><td><select onchange="tournaments[${i}].position=this.value;render()">${positionsList.map(p=>`<option ${p===t.position?'selected':''}>${p}</option>`).join('')}</select>${warnBadge}</td><td><select onchange="tournaments[${i}].grade=this.value;render()">${GRADES.map(g=>`<option ${g===t.grade?'selected':''}>${g}</option>`).join('')}</select></td><td><button class="btn btn-warn" onclick="tournaments.splice(${i},1);render()">✕</button></td></tr>`});h+='</tbody></table>';document.getElementById('tournaments').innerHTML=h}
+function renderTournaments(){const jc=document.getElementById('currentCat').value;let h=`<button class="btn" onclick="addTournament()">+ Турнир</button><button class="btn btn-sec" onclick="loadExample()">📋 Пример Матвеева</button>`;if(jc)h+=`<div class="hint ok"> Категория судьи: <b>${jc}</b>. В списке должностей показываются ТОЛЬКО допустимые.</div>`;else h+=`<div class="hint">ℹ Укажите действующую категорию судьи.</div>`;h+=`<table class="data"><thead><tr><th>Дата</th><th>Место</th><th>Статус</th><th>Полное наименование</th><th>Должность</th><th>Оценка</th><th></th></tr></thead><tbody>`;tournaments.forEach((t,i)=>{const allowed=getAllowedPositions(jc,t.status);const check=checkRecord(t,jc);let positionsList;if(allowed.length===0)positionsList=[t.position,...POSITIONS.filter(p=>p!==t.position)];else if(allowed.includes(t.position))positionsList=allowed;else positionsList=[t.position,...allowed];const rowClass=check.ok?'':'invalid';const warnBadge=!check.ok?`<span class="warn-badge" title="${check.msg}">⚠</span>`:'';h+=`<tr class="${rowClass}"><td><input value="${t.date}" onchange="tournaments[${i}].date=this.value;render()"></td><td><input value="${t.place}" onchange="tournaments[${i}].place=this.value;render()"></td><td><select onchange="changeStatus(${i},this.value)">${STATUSES.map(s=>`<option ${s===t.status?'selected':''}>${s}</option>`).join('')}</select></td><td><input value="${t.fullName||''}" onchange="tournaments[${i}].fullName=this.value;render()"></td><td><select onchange="tournaments[${i}].position=this.value;render()">${positionsList.map(p=>`<option ${p===t.position?'selected':''}>${p}</option>`).join('')}</select>${warnBadge}</td><td><select onchange="tournaments[${i}].grade=this.value;render()">${GRADES.map(g=>`<option ${g===t.grade?'selected':''}>${g}</option>`).join('')}</select></td><td><button class="btn btn-warn" onclick="tournaments.splice(${i},1);render()">✕</button></td></tr>`});h+='</tbody></table>';document.getElementById('tournaments').innerHTML=h}
 function changeStatus(i,ns){tournaments[i].status=ns;const jc=document.getElementById('currentCat').value,al=getAllowedPositions(jc,ns);if(al.length>0&&!al.includes(tournaments[i].position))tournaments[i].position=al[0];render()}
 function renderTheory(){let h=`<button class="btn" onclick="addTheory()">+ Занятие</button><table class="data"><thead><tr><th>Дата</th><th>Роль</th><th>Место</th><th>Описание</th><th>Оценка</th><th></th></tr></thead><tbody>`;theory.forEach((t,i)=>{h+=`<tr><td><input value="${t.date}" onchange="theory[${i}].date=this.value"></td><td><select onchange="theory[${i}].role=this.value"><option ${t.role==='Участник'?'selected':''}>Участник</option><option ${t.role==='Лектор'?'selected':''}>Лектор</option></select></td><td><input value="${t.place}" onchange="theory[${i}].place=this.value"></td><td><input value="${t.description||''}" onchange="theory[${i}].description=this.value"></td><td><input value="${t.grade}" onchange="theory[${i}].grade=this.value"></td><td><button class="btn btn-warn" onclick="theory.splice(${i},1);render()">✕</button></td></tr>`});h+='</tbody></table>';document.getElementById('theory').innerHTML=h}
 function renderExam(){let h=`<button class="btn" onclick="addExam()">+ Зачёт</button><table class="data"><thead><tr><th>Дата</th><th>Место</th><th>№ протокола</th><th>Тест</th><th>Видеотест ката</th><th></th></tr></thead><tbody>`;exams.forEach((e,i)=>{h+=`<tr><td><input value="${e.date}" onchange="exams[${i}].date=this.value"></td><td><input value="${e.place}" onchange="exams[${i}].place=this.value"></td><td><input value="${e.protocol||''}" onchange="exams[${i}].protocol=this.value"></td><td><input value="${e.testGrade||''}" onchange="exams[${i}].testGrade=this.value"></td><td><input value="${e.kataGrade||''}" onchange="exams[${i}].kataGrade=this.value"></td><td><button class="btn btn-warn" onclick="exams.splice(${i},1);render()">✕</button></td></tr>`});h+='</tbody></table>';document.getElementById('exam').innerHTML=h}
@@ -414,104 +388,176 @@ function buildPage1_Presentation(d){
   const ccn=d.currentCat?(CAT_FULL[d.currentCat]||d.currentCat):'';
   const stt=d.sportTitle==='МС'?'Мастер спорта РФ по '+d.sport:(d.sportTitle==='МСМК'?'Мастер спорта РФ международного класса по '+d.sport:'');
   
-  // Таблица турниров справа
   const tournRows=tournaments.map(t=>`<tr>
     <td style="width:18%;padding:1px 2px;font-size:7pt;border:1px solid #000">${t.date}</td>
     <td style="width:54%;padding:1px 2px;font-size:7pt;border:1px solid #000">${t.fullName||t.status}<br><i style="font-size:6pt">${t.status}</i></td>
     <td style="width:28%;padding:1px 2px;font-size:7pt;border:1px solid #000">${t.position}<br>${t.grade}</td>
   </tr>`).join('');
   
-  // Подписи в стиле оригинала (две колонки)
+  // Подписанты в табличном виде (2 колонки) как в образце
   let signBlock='';
   if(d.category==='ВК'){
-    signBlock=`<table style="width:100%;border-collapse:collapse;border:none;font-size:7.5pt;margin-top:6px">
+    signBlock=`<table style="width:100%;border-collapse:collapse;border:none;font-size:7pt;margin-top:4px">
       <tr>
-        <td style="border:none;padding:2px 0;width:50%;vertical-align:top">
-          <p style="margin:0">_____________________________________________</p>
-          <p class="small" style="margin:0">Наименование региональной спортивной федерации или физкультурно-спортивной организации, включенной в перечень</p>
-          <p style="margin:2px 0 0 0">${d.fedName||''}</p>
-          <p style="margin:1px 0">________________ ________________</p>
-          <p class="small" style="margin:0">Должность (Фамилия, инициалы)</p>
-          <p style="margin:0">${d.fedPosition} ${d.fedPerson}</p>
-          <p style="margin:0">Дата ____________ Подпись ____________</p>
-          <p style="margin:0">Место печати (при наличии)</p>
+        <td style="border:none;padding:1px 2px;width:50%;vertical-align:top">
+          <p style="margin:0;border-bottom:1px solid #000;padding-bottom:1px">_____________________________________________</p>
+          <p class="small" style="margin:1px 0">Наименование региональной спортивной федерации или физкультурно-спортивной организации, включенной в перечень</p>
+          <p style="margin:1px 0 0 0;font-size:7pt">${d.fedName||''}</p>
+          <table style="width:100%;border:none;margin-top:2px">
+            <tr>
+              <td style="border:none;padding:0;width:50%">
+                <p style="margin:0">________________</p>
+                <p class="small" style="margin:0">Должность</p>
+                <p style="margin:0">_________________</p>
+                <p class="small" style="margin:0">Дата (число, месяц, год)</p>
+              </td>
+              <td style="border:none;padding:0;width:50%">
+                <p style="margin:0">________________</p>
+                <p class="small" style="margin:0">(Фамилия, инициалы)</p>
+                <p style="margin:0">______________</p>
+                <p class="small" style="margin:0">Подпись</p>
+              </td>
+            </tr>
+          </table>
+          <p class="small" style="margin:1px 0">Место печати (при наличии)</p>
+          <p style="margin:0;font-size:7pt">${d.fedPosition} ${d.fedPerson}</p>
         </td>
-        <td style="border:none;padding:2px 0 2px 10px;width:50%;vertical-align:top">
-          <p style="margin:0">____________________________________________________________</p>
-          <p class="small" style="margin:0">Наименование органа исполнительной власти субъекта Российской Федерации в области физической культуры и спорта</p>
-          <p style="margin:2px 0 0 0">${d.govName}</p>
-          <p style="margin:1px 0">________________ ________________</p>
-          <p class="small" style="margin:0">Должность (Фамилия, инициалы)</p>
-          <p style="margin:0">${d.govPosition} ${d.govPerson}</p>
-          <p style="margin:0">Дата ____________ Подпись ____________</p>
-          <p style="margin:0">Место печати (при наличии)</p>
+        <td style="border:none;padding:1px 2px 1px 8px;width:50%;vertical-align:top">
+          <p style="margin:0;border-bottom:1px solid #000;padding-bottom:1px">____________________________________________________________</p>
+          <p class="small" style="margin:1px 0">Наименование органа исполнительной власти субъекта Российской Федерации в области физической культуры и спорта</p>
+          <p style="margin:1px 0 0 0;font-size:7pt">${d.govName}</p>
+          <table style="width:100%;border:none;margin-top:2px">
+            <tr>
+              <td style="border:none;padding:0;width:50%">
+                <p style="margin:0">________________</p>
+                <p class="small" style="margin:0">Должность</p>
+                <p style="margin:0">_________________</p>
+                <p class="small" style="margin:0">Дата (число, месяц, год)</p>
+              </td>
+              <td style="border:none;padding:0;width:50%">
+                <p style="margin:0">____________________</p>
+                <p class="small" style="margin:0">(Фамилия, инициалы)</p>
+                <p style="margin:0">__________________</p>
+                <p class="small" style="margin:0">Подпись</p>
+              </td>
+            </tr>
+          </table>
+          <p class="small" style="margin:1px 0">Место печати (при наличии)</p>
+          <p style="margin:0;font-size:7pt">${d.govPosition} ${d.govPerson}</p>
         </td>
       </tr>
       <tr>
         <td style="border:none;padding:2px 0" colspan="2">
-          <p style="margin:4px 0 0 0"><b>Решение общероссийской спортивной федерации (для присвоения квалификационной категории спортивного судьи «спортивный судья всероссийской категории»)</b></p>
-          <p style="margin:0">протокол от «_____» _______________ 20___ г. № _____</p>
+          <p style="margin:2px 0 0 0;font-size:7pt"><b>Решение общероссийской спортивной федерации (для присвоения квалификационной категории спортивного судьи «спортивный судья всероссийской категории»)</b></p>
+          <p style="margin:1px 0 0 0;font-size:7pt">протокол от «_____» _______________ 20___ г. № _____</p>
         </td>
       </tr>
       <tr>
-        <td style="border:none;padding:2px 0;width:50%;vertical-align:top">
-          <p style="margin:0">_____________________________________________ ________________________</p>
-          <p class="small" style="margin:0">Руководитель общероссийской спортивной федерации (Фамилия, инициалы)</p>
-          <p style="margin:0">${d.osfHead||''}</p>
-          <p style="margin:0">Дата ____________ Подпись ____________</p>
+        <td style="border:none;padding:1px 2px;width:50%;vertical-align:top">
+          <p style="margin:0;border-bottom:1px solid #000">_____________________________________________         ________________________</p>
+          <p class="small" style="margin:1px 0">Руководитель общероссийской спортивной федерации            (Фамилия, инициалы)</p>
+          <table style="width:100%;border:none;margin-top:1px">
+            <tr>
+              <td style="border:none;padding:0;width:50%">
+                <p style="margin:0">______________________</p>
+                <p class="small" style="margin:0">Дата (число, месяц, год)</p>
+              </td>
+              <td style="border:none;padding:0;width:50%">
+                <p style="margin:0">___________________</p>
+                <p class="small" style="margin:0">Подпись</p>
+              </td>
+            </tr>
+          </table>
+          <p style="margin:0;font-size:7pt">${d.osfHead||''}</p>
         </td>
-        <td style="border:none;padding:2px 0 2px 10px;width:50%;vertical-align:top">
-          <p style="margin:0">____________________ _____________________ _______________</p>
-          <p class="small" style="margin:0">Должностное лицо (Фамилия, инициалы) Подпись</p>
-          <p style="margin:0">Место печати (при наличии)</p>
+        <td style="border:none;padding:1px 2px 1px 8px;width:50%;vertical-align:top">
+          <p style="margin:0;border-bottom:1px solid #000">____________________                       _____________________               _______________</p>
+          <p class="small" style="margin:1px 0">Должностное лицо                               (Фамилия, инициалы)                          Подпись</p>
+          <p class="small" style="margin:1px 0">Место печати (при наличии)</p>
         </td>
       </tr>
       <tr>
-        <td style="border:none;padding:2px 0" colspan="2">
-          <p style="margin:0">Ответственный исполнитель _____________________ _______________</p>
-          <p class="small" style="margin:0">(Фамилия, инициалы) Подпись</p>
-          <p style="margin:0">${d.respPerson||''}</p>
+        <td style="border:none;padding:1px 2px" colspan="2">
+          <p style="margin:0;font-size:7pt">Ответственный исполнитель _____________________ _______________</p>
+          <p class="small" style="margin:0">(Фамилия, инициалы)                  Подпись</p>
+          <p style="margin:0;font-size:7pt">${d.respPerson||''}</p>
         </td>
       </tr>
     </table>`;
   }else{
-    signBlock=`<table style="width:100%;border-collapse:collapse;border:none;font-size:7.5pt;margin-top:6px">
+    signBlock=`<table style="width:100%;border-collapse:collapse;border:none;font-size:7pt;margin-top:4px">
       <tr>
-        <td style="border:none;padding:2px 0;width:50%;vertical-align:top">
-          <p style="margin:0">_____________________________________________</p>
-          <p class="small" style="margin:0">Наименование региональной спортивной федерации или физкультурно-спортивной организации</p>
-          <p style="margin:2px 0 0 0">${d.fedName||''}</p>
-          <p style="margin:1px 0">________________ ________________</p>
-          <p class="small" style="margin:0">Должность (Фамилия, инициалы)</p>
-          <p style="margin:0">${d.fedPosition} ${d.fedPerson}</p>
-          <p style="margin:0">Дата ____________ Подпись ____________</p>
-          <p style="margin:0">Место печати (при наличии)</p>
+        <td style="border:none;padding:1px 2px;width:50%;vertical-align:top">
+          <p style="margin:0;border-bottom:1px solid #000;padding-bottom:1px">_____________________________________________</p>
+          <p class="small" style="margin:1px 0">Наименование региональной спортивной федерации или физкультурно-спортивной организации</p>
+          <p style="margin:1px 0 0 0;font-size:7pt">${d.fedName||''}</p>
+          <table style="width:100%;border:none;margin-top:2px">
+            <tr>
+              <td style="border:none;padding:0;width:50%">
+                <p style="margin:0">________________</p>
+                <p class="small" style="margin:0">Должность</p>
+                <p style="margin:0">_________________</p>
+                <p class="small" style="margin:0">Дата (число, месяц, год)</p>
+              </td>
+              <td style="border:none;padding:0;width:50%">
+                <p style="margin:0">________________</p>
+                <p class="small" style="margin:0">(Фамилия, инициалы)</p>
+                <p style="margin:0">______________</p>
+                <p class="small" style="margin:0">Подпись</p>
+              </td>
+            </tr>
+          </table>
+          <p class="small" style="margin:1px 0">Место печати (при наличии)</p>
+          <p style="margin:0;font-size:7pt">${d.fedPosition} ${d.fedPerson}</p>
         </td>
-        <td style="border:none;padding:2px 0 2px 10px;width:50%;vertical-align:top">
-          <p style="margin:0">____________________________________________________________</p>
-          <p class="small" style="margin:0">Наименование органа исполнительной власти субъекта Российской Федерации в области физической культуры и спорта</p>
-          <p style="margin:2px 0 0 0">${d.govName}</p>
-          <p style="margin:1px 0">________________ ________________</p>
-          <p class="small" style="margin:0">Должность (Фамилия, инициалы)</p>
-          <p style="margin:0">${d.govPosition} ${d.govPerson}</p>
-          <p style="margin:0">Дата ____________ Подпись ____________</p>
-          <p style="margin:0">Место печати (при наличии)</p>
+        <td style="border:none;padding:1px 2px 1px 8px;width:50%;vertical-align:top">
+          <p style="margin:0;border-bottom:1px solid #000;padding-bottom:1px">____________________________________________________________</p>
+          <p class="small" style="margin:1px 0">Наименование органа исполнительной власти субъекта Российской Федерации в области физической культуры и спорта</p>
+          <p style="margin:1px 0 0 0;font-size:7pt">${d.govName}</p>
+          <table style="width:100%;border:none;margin-top:2px">
+            <tr>
+              <td style="border:none;padding:0;width:50%">
+                <p style="margin:0">________________</p>
+                <p class="small" style="margin:0">Должность</p>
+                <p style="margin:0">_________________</p>
+                <p class="small" style="margin:0">Дата (число, месяц, год)</p>
+              </td>
+              <td style="border:none;padding:0;width:50%">
+                <p style="margin:0">____________________</p>
+                <p class="small" style="margin:0">(Фамилия, инициалы)</p>
+                <p style="margin:0">__________________</p>
+                <p class="small" style="margin:0">Подпись</p>
+              </td>
+            </tr>
+          </table>
+          <p class="small" style="margin:1px 0">Место печати (при наличии)</p>
+          <p style="margin:0;font-size:7pt">${d.govPosition} ${d.govPerson}</p>
         </td>
       </tr>
     </table>`;
   }
   
   return`<div class="doc-page">
-    <h1 class="doc-title">Представление к присвоению квалификационной категории спортивного судьи</h1>
-    <p style="text-align:right;font-size:9pt;margin:4px 0">_______________________________________________________________________________<br><i style="font-size:8pt">(указывается квалификационная категория спортивного судьи)</i><br><b>${catName}</b></p>
-    
-    <table class="form" style="table-layout:fixed">
+    <table style="width:100%;border:none;margin-bottom:4px">
       <tr>
-        <td colspan="4" class="hdr">Дата поступления представления и документов<br>(число, месяц, год)</td>
-        <td colspan="2" class="hdr">фото<br>3х4 см</td>
-        <td colspan="5" class="hdr">Наименование действующей квалификационной категории спортивного судьи</td>
+        <td style="border:none;padding:0;width:60%;vertical-align:bottom">
+          <h1 class="doc-title" style="text-align:left;font-size:10pt;margin:0">Представление к присвоению квалификационной категории спортивного судьи</h1>
+        </td>
+        <td style="border:none;padding:0;width:40%;vertical-align:bottom;text-align:right">
+          <p style="margin:0;font-size:8pt">_______________________________________________________________________________</p>
+          <p class="small" style="margin:0;text-align:right">(указывается квалификационная категория спортивного судьи)</p>
+          <p style="margin:0;font-size:9pt;font-weight:bold;text-align:right">${catName}</p>
+        </td>
+      </tr>
+    </table>
+    
+    <table class="form" style="table-layout:fixed;font-size:7pt">
+      <tr>
+        <td colspan="3" class="hdr" style="height:1%">Дата поступления представления и документов<br>(число, месяц, год)</td>
+        <td colspan="2" class="hdr" style="height:1%">фото<br>3х4 см</td>
+        <td colspan="6" class="hdr" style="height:1%">Наименование действующей квалификационной категории спортивного судьи</td>
         <td rowspan="15" style="vertical-align:top;padding:0;width:50%">
-          <table style="width:100%;border-collapse:collapse;font-size:7pt">
+          <table style="width:100%;border-collapse:collapse;font-size:6.5pt">
             <tr>
               <th style="border:1px solid #000;padding:1px 2px;background:#f0f0f0;width:18%">Сроки проведения официального спортивного соревнования<br>(с дд/мм/гг до дд/мм/гг)</th>
               <th style="border:1px solid #000;padding:1px 2px;background:#f0f0f0;width:54%">Наименование и статус официального спортивного соревнования</th>
@@ -522,51 +568,51 @@ function buildPage1_Presentation(d){
         </td>
       </tr>
       <tr>
-        <td colspan="4"></td>
-        <td colspan="2"><div class="photo-box">3×4</div></td>
-        <td colspan="5">${ccn}<br><br>Дата присвоения действующей квалификационной категории спортивного судьи (число, месяц, год): ${fmtDate(d.currentCatDate)}<br>${d.currentCatDoc||''}</td>
+        <td colspan="3" style="height:1%"></td>
+        <td colspan="2" style="height:1%"><div class="photo-box">3×4</div></td>
+        <td colspan="6" style="height:1%">${ccn}<br><br>Дата присвоения действующей квалификационной категории спортивного судьи (число, месяц, год): ${fmtDate(d.currentCatDate)}<br>${d.currentCatDoc||''}</td>
       </tr>
-      <tr><td class="hdr">Фамилия</td><td colspan="10">${d.lastName}</td></tr>
-      <tr><td class="hdr">Имя</td><td colspan="10">${d.firstName}</td></tr>
-      <tr><td class="hdr">Отчество (при наличии)</td><td colspan="10">${d.middleName}</td></tr>
+      <tr><td class="hdr" style="height:1%">Фамилия</td><td colspan="10" style="height:1%">${d.lastName}</td></tr>
+      <tr><td class="hdr" style="height:1%">Имя</td><td colspan="10" style="height:1%">${d.firstName}</td></tr>
+      <tr><td class="hdr" style="height:1%">Отчество (при наличии)</td><td colspan="10" style="height:1%">${d.middleName}</td></tr>
       <tr>
-        <td class="hdr">Дата рождения<br>(число, месяц, год)</td>
-        <td>${fmtDate(d.birthDate).split('.')[0]}</td>
-        <td>${fmtDate(d.birthDate).split('.')[1]}</td>
-        <td colspan="2">${fmtDate(d.birthDate).split('.')[2]}</td>
-        <td class="hdr">Наименование вида спорта</td>
-        <td colspan="5">${d.sport}</td>
-      </tr>
-      <tr>
-        <td class="hdr">Субъект Российской Федерации</td>
-        <td colspan="4">${d.region}</td>
-        <td class="hdr">Номер-код вид спорта</td>
-        <td colspan="5">${d.sportCode}</td>
+        <td class="hdr" style="height:1%">Дата рождения<br>(число, месяц, год)</td>
+        <td style="height:1%">${fmtDate(d.birthDate).split('.')[0]}</td>
+        <td style="height:1%">${fmtDate(d.birthDate).split('.')[1]}</td>
+        <td colspan="2" style="height:1%">${fmtDate(d.birthDate).split('.')[2]}</td>
+        <td class="hdr" style="height:1%">Наименование вида спорта</td>
+        <td colspan="5" style="height:1%">${d.sport}</td>
       </tr>
       <tr>
-        <td class="hdr">Место работы (учёбы), должность</td>
-        <td colspan="4">${d.workplace}</td>
-        <td class="hdr">Наименование и адрес (место нахождения) организации, осуществляющей учёт судейской деятельности спортивного судьи</td>
-        <td colspan="5">${d.orgName}, ${d.orgAddress}</td>
+        <td class="hdr" style="height:1%">Субъект Российской Федерации</td>
+        <td colspan="4" style="height:1%">${d.region}</td>
+        <td class="hdr" style="height:1%">Номер-код вид спорта</td>
+        <td colspan="5" style="height:1%">${d.sportCode}</td>
       </tr>
       <tr>
-        <td class="hdr">Образование</td>
-        <td colspan="4">${d.education}</td>
-        <td class="hdr">Спортивное звание (при наличии)</td>
-        <td colspan="5">${stt}</td>
+        <td class="hdr" style="height:1%">Место работы (учёбы), должность</td>
+        <td colspan="4" style="height:1%">${d.workplace}</td>
+        <td class="hdr" style="height:1%">Наименование и адрес (место нахождения) организации, осуществляющей учёт судейской деятельности спортивного судьи</td>
+        <td colspan="5" style="height:1%">${d.orgName}, ${d.orgAddress}</td>
       </tr>
-      <tr><td colspan="11" class="hdr">Участие в теоретических занятиях, выполнение тестов по физической подготовке (для видов спорта, где такие тесты предусмотрены правилами вида спорта), сдача квалификационного зачета (экзамена)</td></tr>
       <tr>
-        <td class="hdr center">№</td>
-        <td colspan="4" class="hdr">Дата (число, месяц, год)</td>
-        <td colspan="5" class="hdr">Место проведения</td>
-        <td class="hdr">Оценка</td>
+        <td class="hdr" style="height:1%">Образование</td>
+        <td colspan="4" style="height:1%">${d.education}</td>
+        <td class="hdr" style="height:1%">Спортивное звание (при наличии)</td>
+        <td colspan="5" style="height:1%">${stt}</td>
+      </tr>
+      <tr><td colspan="11" class="hdr" style="height:1%">Участие в теоретических занятиях, выполнение тестов по физической подготовке (для видов спорта, где такие тесты предусмотрены правилами вида спорта), сдача квалификационного зачета (экзамена)</td></tr>
+      <tr>
+        <td class="hdr center" style="height:1%">№</td>
+        <td colspan="4" class="hdr" style="height:1%">Дата (число, месяц, год)</td>
+        <td colspan="5" class="hdr" style="height:1%">Место проведения</td>
+        <td class="hdr" style="height:1%">Оценка</td>
       </tr>
       ${th.map((t,i)=>`<tr>
-        <td class="center">${i+1}</td>
-        <td colspan="4">${t.date||''}</td>
-        <td colspan="5">${t.description||t.place||''}</td>
-        <td>${t.grade||''}</td>
+        <td class="center" style="height:1%">${i+1}</td>
+        <td colspan="4" style="height:1%">${t.date||''}</td>
+        <td colspan="5" style="height:1%">${t.description||t.place||''}</td>
+        <td style="height:1%">${t.grade||''}</td>
       </tr>`).join('')}
     </table>
     
@@ -574,11 +620,117 @@ function buildPage1_Presentation(d){
   </div>`;
 }
 
-function buildPage2_CardHeader(d){const cr=catsHistory.map(c=>`<tr><td>${c.cat}</td><td>${c.action}</td><td>${c.date}</td><td>${c.num||''}</td><td>${c.org||''}</td><td>${c.person||''}</td><td></td></tr>`).join('');const stt=d.sportTitle==='МС'?'Мастер спорта РФ по '+d.sport:(d.sportTitle==='МСМК'?'Мастер спорта РФ международного класса по '+d.sport:'');return`<div class="doc-page"><h1 class="doc-title">Карточка учёта судейской деятельности спортивного судьи</h1><table class="card-top"><tr><td class="hdr">Наименование вида спорта</td><td colspan="3">${d.sport}</td><td class="hdr">Номер-код вида спорта</td><td colspan="3">${d.sportCode}</td></tr><tr><td class="hdr">Фамилия</td><td colspan="3">${d.lastName}</td><td class="hdr">Имя</td><td colspan="3">${d.firstName}</td></tr><tr><td class="hdr">Отчество (при наличии)</td><td colspan="3">${d.middleName}</td><td class="hdr">Дата рождения</td><td colspan="3">${fmtDate(d.birthDate)}</td></tr><tr><td class="hdr">Субъект РФ</td><td colspan="3">${d.region}</td><td class="hdr">Муниципальное образование</td><td colspan="3">${d.municipality}</td></tr><tr><td class="hdr">Спортивное звание в данном виде спорта (при наличии)</td><td colspan="3">${stt}</td><td class="hdr">Дата начала судейской деятельности</td><td colspan="3">${fmtDate(d.judgeStartDate)}</td></tr><tr><td class="hdr">Образование</td><td colspan="3">${d.education}</td><td class="hdr">Место работы (учёбы), должность</td><td colspan="3">${d.workplace}</td></tr><tr><td class="hdr">Контактные телефоны, адрес электронной почты</td><td colspan="8">тел.: ${d.phone}; e-mail: ${d.email}</td></tr><tr><td class="hdr">Организация, осуществляющая учёт судейской деятельности спортивного судьи</td><td colspan="8"><table style="width:100%;border-collapse:collapse;border:none"><tr><td style="border:none;padding:0"><b>Наименование:</b> ${d.orgName}</td></tr><tr><td style="border:none;padding:0"><b>Адрес (место нахождения):</b> ${d.orgAddress}</td></tr><tr><td style="border:none;padding:0"><b>Телефон, адрес электронной почты:</b> ${d.orgContacts}</td></tr></table></td></tr></table><div class="section-title">Сведения о присвоении / подтверждении / лишении / восстановлении квалификационной категории спортивного судьи</div><table class="card-cats"><tr><th style="width:13%">Наименование квалификационной категории</th><th style="width:13%">Присвоена / подтверждена / лишена / восстановлена</th><th style="width:10%">Дата (число, месяц, год)</th><th style="width:8%">Реквизиты документа: №</th><th style="width:25%">Наименование организации, принявшей решение</th><th style="width:15%">Фамилия и инициалы должностного лица</th><th style="width:16%">Печать организации, подпись, ФИО лица, ответственного за оформление карточки учёта</th></tr>${cr}</table></div>`}
+// ============ СТРАНИЦА 2: КАРТОЧКА УЧЁТА - ШАПКА + ИСТОРИЯ КАТЕГОРИЙ ============
+function buildPage2_CardHeader(d){
+  const cr=catsHistory.map(c=>`<tr><td>${c.cat}</td><td>${c.action}</td><td>${c.date}</td><td>${c.num||''}</td><td>${c.org||''}</td><td>${c.person||''}</td><td></td></tr>`).join('');
+  const stt=d.sportTitle==='МС'?'Мастер спорта РФ по '+d.sport:(d.sportTitle==='МСМК'?'Мастер спорта РФ международного класса по '+d.sport:'');
+  return`<div class="doc-page">
+    <h1 class="doc-title">Карточка учёта судейской деятельности спортивного судьи</h1>
+    <table class="card-top">
+      <tr><td class="hdr">Наименование вида спорта</td><td colspan="3">${d.sport}</td><td class="hdr">Номер-код вида спорта</td><td colspan="3">${d.sportCode}</td></tr>
+      <tr><td class="hdr">Фамилия</td><td colspan="3">${d.lastName}</td><td class="hdr">Имя</td><td colspan="3">${d.firstName}</td></tr>
+      <tr><td class="hdr">Отчество (при наличии)</td><td colspan="3">${d.middleName}</td><td class="hdr">Дата рождения</td><td colspan="3">${fmtDate(d.birthDate)}</td></tr>
+      <tr><td class="hdr">Субъект РФ</td><td colspan="3">${d.region}</td><td class="hdr">Муниципальное образование</td><td colspan="3">${d.municipality}</td></tr>
+      <tr><td class="hdr">Спортивное звание в данном виде спорта (при наличии)</td><td colspan="3">${stt}</td><td class="hdr">Дата начала судейской деятельности</td><td colspan="3">${fmtDate(d.judgeStartDate)}</td></tr>
+      <tr><td class="hdr">Образование</td><td colspan="3">${d.education}</td><td class="hdr">Место работы (учёбы), должность</td><td colspan="3">${d.workplace}</td></tr>
+      <tr><td class="hdr">Контактные телефоны, адрес электронной почты</td><td colspan="8">тел.: ${d.phone}; e-mail: ${d.email}</td></tr>
+      <tr><td class="hdr">Организация, осуществляющая учёт судейской деятельности спортивного судьи</td><td colspan="8">
+        <table style="width:100%;border-collapse:collapse;border:none">
+          <tr><td style="border:none;padding:0"><b>Наименование:</b> ${d.orgName}</td></tr>
+          <tr><td style="border:none;padding:0"><b>Адрес (место нахождения):</b> ${d.orgAddress}</td></tr>
+          <tr><td style="border:none;padding:0"><b>Телефон, адрес электронной почты:</b> ${d.orgContacts}</td></tr>
+        </table>
+      </td></tr>
+    </table>
+    <div class="section-title">Сведения о присвоении / подтверждении / лишении / восстановлении квалификационной категории спортивного судьи</div>
+    <table class="card-cats">
+      <tr>
+        <th style="width:13%">Наименование квалификационной категории</th>
+        <th style="width:13%">Присвоена / подтверждена / лишена / восстановлена</th>
+        <th style="width:10%">Дата (число, месяц, год)</th>
+        <th style="width:8%">Реквизиты документа: №</th>
+        <th style="width:25%">Наименование организации, принявшей решение</th>
+        <th style="width:15%">Фамилия и инициалы должностного лица</th>
+        <th style="width:16%">Печать организации, подпись, ФИО лица, ответственного за оформление карточки учёта</th>
+      </tr>
+      ${cr}
+    </table>
+  </div>`;
+}
 
-function buildPage3_Theory(d){const tr=[];theory.forEach(t=>{if(t.role==='Лектор')tr.push({ld:t.date,lp:t.place,lg:t.grade,pd:'',pp:'',ed:'',ep:'',eg:'',fd:'',fp:'',ft:'',fg:''});else tr.push({ld:'',lp:'',lg:'',pd:t.date,pp:t.place,ed:'',ep:'',eg:'',fd:'',fp:'',ft:'',fg:''})});exams.forEach(e=>tr.push({ld:'',lp:'',lg:'',pd:'',pp:'',ed:e.date,ep:e.protocol,eg:e.testGrade,fd:'',fp:'',ft:'',fg:''}));const rds=fmtDate(d.recordDate)+' г.',ki=`${d.orgName}<br>${rds}, ${d.cardKeeper}`;const th=tr.map(r=>`<tr><td>${r.ld}</td><td>${r.lp}</td><td>${r.lg}</td><td>${r.pd}</td><td>${r.pp}</td><td>${r.ed}</td><td>${r.ep}</td><td>${r.eg}</td><td>${r.fd}</td><td>${r.fp}</td><td>${r.ft}</td><td>${r.fg}</td><td style="font-size:6pt">${ki}</td></tr>`).join('');return`<div class="doc-page"><div class="section-title">Теоретическая подготовка, выполнение тестов по физической подготовке, сдача квалификационного зачёта (экзамена)</div><table class="card-cats"><tr><th colspan="3">Участие в теоретической подготовке в качестве</th><th colspan="2">Участие в теоретической подготовке в качестве</th><th colspan="3">Сдача квалификационного зачёта (экзамена)</th><th colspan="4">Выполнение тестов по физической подготовке</th><th>Проводящая организация, дата внесения записи, подпись, ФИО лица, ответственного за оформление карточки учёта</th></tr><tr><th colspan="3" style="text-align:center;font-size:6.5pt">Лектора</th><th colspan="2" style="text-align:center;font-size:6.5pt">Участника</th><th colspan="3"></th><th colspan="4"></th><th></th></tr><tr><th>Дата</th><th>Место проведения (адрес)</th><th>Оценка</th><th>Дата</th><th>Место проведения (адрес)</th><th>Дата</th><th>№ протокола</th><th>Оценка</th><th>Дата</th><th>Место проведения (адрес)</th><th>Статус спортивного судьи, наименование теста, результат</th><th>Оценка</th><th></th></tr>${th}</table></div>`}
+// ============ СТРАНИЦА 3: ТЕОРЕТИЧЕСКАЯ ПОДГОТОВКА ============
+function buildPage3_Theory(d){
+  const tr=[];
+  theory.forEach(t=>{
+    if(t.role==='Лектор')tr.push({ld:t.date,lp:t.place,lg:t.grade,pd:'',pp:'',ed:'',ep:'',eg:'',fd:'',fp:'',ft:'',fg:''});
+    else tr.push({ld:'',lp:'',lg:'',pd:t.date,pp:t.place,ed:'',ep:'',eg:'',fd:'',fp:'',ft:'',fg:''});
+  });
+  exams.forEach(e=>tr.push({ld:'',lp:'',lg:'',pd:'',pp:'',ed:e.date,ep:e.protocol,eg:e.testGrade,fd:'',fp:'',ft:'',fg:''}));
+  const rds=fmtDate(d.recordDate)+' г.',ki=`${d.orgName}<br>${rds}, ${d.cardKeeper}`;
+  const th=tr.map(r=>`<tr>
+    <td>${r.ld}</td><td>${r.lp}</td><td>${r.lg}</td>
+    <td>${r.pd}</td><td>${r.pp}</td>
+    <td>${r.ed}</td><td>${r.ep}</td><td>${r.eg}</td>
+    <td>${r.fd}</td><td>${r.fp}</td><td>${r.ft}</td><td>${r.fg}</td>
+    <td style="font-size:6pt">${ki}</td>
+  </tr>`).join('');
+  return`<div class="doc-page">
+    <div class="section-title">Теоретическая подготовка, выполнение тестов по физической подготовке, сдача квалификационного зачёта (экзамена)</div>
+    <table class="card-cats">
+      <tr>
+        <th colspan="3">Участие в теоретической подготовке в качестве</th>
+        <th colspan="2">Участие в теоретической подготовке в качестве</th>
+        <th colspan="3">Сдача квалификационного зачёта (экзамена)</th>
+        <th colspan="4">Выполнение тестов по физической подготовке</th>
+        <th>Проводящая организация, дата внесения записи, подпись, ФИО лица, ответственного за оформление карточки учёта</th>
+      </tr>
+      <tr>
+        <th colspan="3" style="text-align:center;font-size:6.5pt">Лектора</th>
+        <th colspan="2" style="text-align:center;font-size:6.5pt">Участника</th>
+        <th colspan="3"></th>
+        <th colspan="4"></th>
+        <th></th>
+      </tr>
+      <tr>
+        <th>Дата</th><th>Место проведения (адрес)</th><th>Оценка</th>
+        <th>Дата</th><th>Место проведения (адрес)</th>
+        <th>Дата</th><th>№ протокола</th><th>Оценка</th>
+        <th>Дата</th><th>Место проведения (адрес)</th>
+        <th>Статус спортивного судьи, наименование теста, результат</th>
+        <th>Оценка</th>
+        <th></th>
+      </tr>
+      ${th}
+    </table>
+  </div>`;
+}
 
-function buildPage4_Practice(d){const rds=fmtDate(d.recordDate)+' г.';const pr=tournaments.map(t=>`<tr><td style="width:10%">${t.date}</td><td style="width:12%">${t.place}</td><td style="width:11%">${t.position}</td><td style="width:45%">${t.fullName||t.status}</td><td style="width:7%">${t.grade}</td><td style="width:15%;font-size:6.5pt">${rds}, ${d.cardKeeper}</td></tr>`).join('');return`<div class="doc-page"><div class="section-title">Практика судейства официальных спортивных соревнований</div><table class="card-cats"><tr><th style="width:10%">Дата проведения</th><th style="width:12%">Место проведения (адрес)</th><th style="width:11%">Статус спортивного судьи</th><th style="width:45%">Наименование и статус официальных спортивных соревнований, вид программы</th><th style="width:7%">Оценка</th><th style="width:15%">Дата внесения записи, подпись, ФИО лица, ответственного за оформление карточки учёта</th></tr>${pr}</table></div>`}
+// ============ СТРАНИЦА 4: ПРАКТИКА СУДЕЙСТВА ============
+function buildPage4_Practice(d){
+  const rds=fmtDate(d.recordDate)+' г.';
+  const pr=tournaments.map(t=>`<tr>
+    <td style="width:10%">${t.date}</td>
+    <td style="width:12%">${t.place}</td>
+    <td style="width:11%">${t.position}</td>
+    <td style="width:45%">${t.fullName||t.status}</td>
+    <td style="width:7%">${t.grade}</td>
+    <td style="width:15%;font-size:6.5pt">${rds}, ${d.cardKeeper}</td>
+  </tr>`).join('');
+  return`<div class="doc-page">
+    <div class="section-title">Практика судейства официальных спортивных соревнований</div>
+    <table class="card-cats">
+      <tr>
+        <th style="width:10%">Дата проведения</th>
+        <th style="width:12%">Место проведения (адрес)</th>
+        <th style="width:11%">Статус спортивного судьи</th>
+        <th style="width:45%">Наименование и статус официальных спортивных соревнований, вид программы</th>
+        <th style="width:7%">Оценка</th>
+        <th style="width:15%">Дата внесения записи, подпись, ФИО лица, ответственного за оформление карточки учёта</th>
+      </tr>
+      ${pr}
+    </table>
+  </div>`;
+}
 
 function renderPreview(){const d=getD();const container=document.getElementById('preview-container');container.innerHTML=buildPage1_Presentation(d)+buildPage2_CardHeader(d)+buildPage3_Theory(d)+buildPage4_Practice(d)}
 
