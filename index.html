@@ -20,7 +20,7 @@ input,select,textarea{width:100%;padding:6px;border:1px solid #d1d5db;border-rad
 .btn{background:var(--accent);color:#fff;border:none;padding:8px 14px;border-radius:5px;cursor:pointer;font-size:13px;margin-right:5px;transition:all 0.2s}
 .btn:hover{opacity:.9;transform:translateY(-1px)}
 .btn:disabled{background:#9ca3af;cursor:not-allowed;opacity:0.6;transform:none}
-.btn-ok{background:var(--ok)}.btn-warn{background:var(--warn)}.btn-sec{background:#6b7280}
+.btn-ok{background:var(--ok)}.btn-warn{background:var(--warn)}.btn-sec{background:#6b7280}.btn-reset{background:#991b1b}
 .req-block{border-left:4px solid var(--accent);padding:10px;background:#eff6ff;margin-bottom:8px;border-radius:4px;font-size:13px}
 .req-block.done{border-color:var(--ok);background:#f0fdf4}
 .req-block.miss{border-color:var(--warn);background:#fef2f2}
@@ -42,13 +42,7 @@ tr.invalid td{color:#991b1b}
 .tab:hover{background:#d1d5db}
 .tab.active{background:var(--accent);color:#fff}
 .hidden{display:none !important}
-
-/* ИСПРАВЛЕНИЕ: z-index модального окна теперь 10000, чтобы быть поверх всего */
-.modal{
-  display:none;position:fixed;top:0;left:0;width:100%;height:100%;
-  background:rgba(0,0,0,0.6);z-index:10000;
-  justify-content:center;align-items:center;backdrop-filter:blur(4px);
-}
+.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:10000;justify-content:center;align-items:center;backdrop-filter:blur(4px)}
 .modal.active{display:flex}
 .modal-content{background:#fff;border-radius:12px;padding:24px;max-width:500px;width:90%;box-shadow:0 10px 40px rgba(0,0,0,0.3);animation:modalSlideIn 0.3s ease-out;max-height:90vh;overflow-y:auto}
 @keyframes modalSlideIn{from{transform:translateY(-50px);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -59,13 +53,7 @@ tr.invalid td{color:#991b1b}
 .key-input{font-family:monospace;font-size:16px;letter-spacing:2px;text-align:center;padding:10px}
 .key-info{background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:12px;margin:12px 0;font-size:13px}
 .key-info strong{color:var(--accent)}
-
-/* Оверлей блокировки */
-.blocked-overlay{
-  position:fixed;top:0;left:0;width:100%;height:100%;
-  background:rgba(0,0,0,0.85);z-index:5000;
-  display:none;justify-content:center;align-items:center;backdrop-filter:blur(8px);
-}
+.blocked-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:5000;display:none;justify-content:center;align-items:center;backdrop-filter:blur(8px)}
 .blocked-overlay.active{display:flex}
 .blocked-content{background:#fff;border-radius:16px;padding:40px;max-width:600px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
 .blocked-content h2{color:var(--warn);font-size:24px;margin-bottom:20px}
@@ -106,6 +94,7 @@ tr.invalid td{color:#991b1b}
     <button class="btn btn-ok" id="btnPDF" onclick="exportPDF()">⬇ PDF</button>
     <button class="btn btn-sec" onclick="saveLocal()">💾 Сохранить</button>
     <button class="btn btn-sec" onclick="loadLocal()">📂 Загрузить</button>
+    <button class="btn btn-reset" onclick="resetAll()">🗑 Сбросить всё</button>
     <button class="btn" onclick="showKeyModal()">🔑 Активировать</button>
   </div>
 </header>
@@ -213,7 +202,6 @@ tr.invalid td{color:#991b1b}
 </div>
 </div>
 
-<!-- Модальное окно активации -->
 <div id="keyModal" class="modal">
   <div class="modal-content">
     <span class="close" onclick="closeKeyModal()">&times;</span>
@@ -222,7 +210,6 @@ tr.invalid td{color:#991b1b}
   </div>
 </div>
 
-<!-- Оверлей блокировки -->
 <div id="blockedOverlay" class="blocked-overlay">
   <div class="blocked-content">
     <h2>🔒 Доступ ограничен</h2>
@@ -249,7 +236,8 @@ const LICENSE = {
   isPremium(){
     const ld=this.getLicenseData();
     if(!ld)return false;
-    const k=this.KEYS[ld.key];
+    const allKeys=this.getAllValidKeys();
+    const k=allKeys[ld.key];
     if(!k)return false;
     if(new Date(k.expiresAt)<new Date()){this.revokeLicense('Срок действия ключа истёк');return false}
     if(k.maxExports!==-1&&this.getExportCount()>=k.maxExports)return false;
@@ -257,21 +245,27 @@ const LICENSE = {
   },
   canExport(){
     const ld=this.getLicenseData();
-    if(ld){const k=this.KEYS[ld.key];if(k&&k.maxExports===-1)return true;if(k&&this.getExportCount()<k.maxExports)return true}
+    if(ld){const allKeys=this.getAllValidKeys();const k=allKeys[ld.key];if(k&&k.maxExports===-1)return true;if(k&&this.getExportCount()<k.maxExports)return true}
     return this.getExportCount()<this.FREE_EXPORTS;
+  },
+  getAllValidKeys(){
+    let validKeys={...this.KEYS};
+    try{const adminKeysStr=localStorage.getItem('adminKeys');if(adminKeysStr){const adminKeys=JSON.parse(adminKeysStr);validKeys={...validKeys,...adminKeys}}}catch(e){}
+    return validKeys;
   },
   activateKey(key,email){
     key=key.trim().toUpperCase();email=email.trim().toLowerCase();
-    if(!this.KEYS[key])return{success:false,error:'❌ Неверный ключ. Проверьте правильность ввода.'};
+    const allKeys=this.getAllValidKeys();
+    if(!allKeys[key])return{success:false,error:' Неверный ключ. Проверьте правильность ввода.'};
     if(!email)return{success:false,error:'❌ Введите email для привязки ключа'};
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return{success:false,error:'❌ Некорректный email. Пример: user@mail.ru'};
-    const k=this.KEYS[key];
-    if(new Date(k.expiresAt)<new Date())return{success:false,error:`❌ Срок действия ключа истёк (${k.expiresAt}). Обратитесь к администратору.`};
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return{success:false,error:'❌ Некорректный email'};
+    const k=allKeys[key];
+    if(new Date(k.expiresAt)<new Date())return{success:false,error:`❌ Срок действия ключа истёк (${k.expiresAt})`};
     const deviceId=this.getDeviceId();
     const activations=JSON.parse(localStorage.getItem('activations')||'{}');
     if(activations[key]){
       const ex=activations[key];
-      if(ex.email!==email)return{success:false,error:`❌ Ключ уже привязан к другому email: ${ex.email}. Обратитесь к администратору для сброса.`};
+      if(ex.email!==email)return{success:false,error:`❌ Ключ уже привязан к другому email: ${ex.email}`};
       if(ex.deviceId!==deviceId&&k.maxDevices!==-1)return{success:false,error:'❌ Ключ уже используется на другом устройстве'};
     }
     localStorage.setItem('licenseData',JSON.stringify({key,email,deviceId,activatedAt:new Date().toISOString()}));
@@ -284,6 +278,42 @@ const LICENSE = {
   getDeviceId(){return btoa(navigator.userAgent+screen.width+screen.height+navigator.language+navigator.hardwareConcurrency).substring(0,20)},
   resetLicense(){localStorage.removeItem('licenseData');localStorage.removeItem('exportCount')}
 };
+
+// ============ ФУНКЦИЯ СБРОСА ВСЕХ ДАННЫХ ============
+function resetAll(){
+  if(!confirm('️ Вы уверены, что хотите сбросить ВСЕ данные?\n\nБудут очищены:\n• Все личные данные\n• Все турниры, теория, зачёты\n• История категорий\n• Счётчик выгрузок\n\nЛицензия (ключ активации) будет СОХРАНЕНА.')){
+    return;
+  }
+  
+  // Очищаем все поля форм
+  const fields = ['lastName','firstName','middleName','birthDate','region','municipality','address','workplace','phone','email','judgeStartDate','orgName','orgAddress','orgContacts','fedName','fedPosition','fedPerson','govName','govPosition','govPerson','osfHead','respPerson','cardKeeper','recordDate','currentCatDate','currentCatDoc','submitDate','sportCode'];
+  fields.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.value='';
+  });
+  
+  // Сбрасываем селекты
+  document.getElementById('category').value='ВК';
+  document.getElementById('currentCat').value='1К';
+  document.getElementById('sportTitle').value='';
+  document.getElementById('education').value='высшее';
+  
+  // Очищаем массивы данных
+  tournaments=[];
+  theory=[];
+  exams=[];
+  catsHistory=[];
+  
+  // Сбрасываем счётчик выгрузок (но не лицензию!)
+  localStorage.setItem('exportCount','0');
+  localStorage.removeItem('judgeDocs');
+  
+  // Перерисовываем интерфейс
+  render();
+  checkLicense();
+  
+  alert('✓ Все данные сброшены. Можете начать заполнение заново.');
+}
 
 function checkLicense(){
   const badge=document.getElementById('licenseBadge'),bw=document.getElementById('btnWord'),bp=document.getElementById('btnPDF'),bo=document.getElementById('blockedOverlay');
@@ -307,95 +337,37 @@ function checkLicense(){
 }
 
 function showKeyModal(){
-  // ГАРАНТИРОВАННО скрываем оверлей блокировки
-  const bo = document.getElementById('blockedOverlay');
+  const bo=document.getElementById('blockedOverlay');
   if(bo){bo.style.display='none';bo.classList.remove('active');}
-  
   const modal=document.getElementById('keyModal'),content=document.getElementById('keyModalContent');
   const ld=LICENSE.getLicenseData();
-  
   if(ld&&LICENSE.isPremium()){
-    const k=LICENSE.KEYS[ld.key];
-    content.innerHTML=`
-      <div class="key-info">
-        <strong>✓ Программа активирована!</strong><br>
-        Ключ: <code>${ld.key}</code><br>
-        Email: <b>${ld.email}</b><br>
-        Тип: ${k?.description||'Неизвестно'}<br>
-        Активирован: ${new Date(ld.activatedAt).toLocaleString('ru-RU')}
-      </div>
-      <button class="btn btn-warn" onclick="if(confirm('Сбросить лицензию?')){LICENSE.resetLicense();closeKeyModal();checkLicense();}">Сбросить</button>
-      <button class="btn btn-sec" onclick="closeKeyModal()">Закрыть</button>
-    `;
+    const allKeys=LICENSE.getAllValidKeys();const k=allKeys[ld.key];
+    content.innerHTML=`<div class="key-info"><strong>✓ Программа активирована!</strong><br>Ключ: <code>${ld.key}</code><br>Email: <b>${ld.email}</b><br>Тип: ${k?.description||'Неизвестно'}<br>Активирован: ${new Date(ld.activatedAt).toLocaleString('ru-RU')}</div><button class="btn btn-warn" onclick="if(confirm('Сбросить лицензию?')){LICENSE.resetLicense();closeKeyModal();checkLicense();}">Сбросить лицензию</button><button class="btn btn-sec" onclick="closeKeyModal()">Закрыть</button>`;
   }else{
     const c=LICENSE.getExportCount(),r=LICENSE.FREE_EXPORTS-c;
-    content.innerHTML=`
-      <p><strong>Пробная версия:</strong> ${r>0?`Осталось ${r} выгруз${r===1?'ка':r<5?'ки':'ок'}`:'Лимит исчерпан'}</p>
-      <div class="key-info">
-        <strong>Для активации введите:</strong><br>
-        1. Ваш email (для привязки ключа)<br>
-        2. Ключ активации от администратора СК
-      </div>
-      <label>Email:</label>
-      <input type="email" id="emailInput" placeholder="your@email.com" style="margin:8px 0">
-      <label>Ключ активации:</label>
-      <input type="text" id="keyInput" class="key-input" placeholder="XXXX-XXXX-XXXX-XXXX" style="margin:8px 0">
-      <div id="keyError" class="alert err hidden"></div>
-      <button class="btn btn-ok" onclick="activateKey()">Активировать</button>
-      <button class="btn btn-sec" onclick="closeKeyModal()">Закрыть</button>
-      <details style="margin-top:16px;font-size:12px;color:#6b7280">
-        <summary style="cursor:pointer;font-weight:bold">🔑 Тестовые ключи (для разработчика)</summary>
-        <div style="margin-top:8px;padding:10px;background:#f0f9ff;border-radius:6px;border:1px solid #bae6fd">
-          <p style="margin:4px 0"><strong>♾ Бессрочный:</strong><br><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-UNIVERSAL-MASTER</code></p>
-          <p style="margin:8px 0 4px"><strong>🧪 Тестовые (до 2028):</strong></p>
-          <p style="margin:2px 0"><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-TEST-2026-001</code></p>
-          <p style="margin:2px 0"><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-TEST-2026-002</code></p>
-          <p style="margin:2px 0"><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-TEST-2026-003</code></p>
-          <p style="margin:8px 0 4px"><strong>💎 Премиум (до 2028):</strong><br><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-PREMIUM-2026</code></p>
-        </div>
-      </details>
-    `;
+    content.innerHTML=`<p><strong>Пробная версия:</strong> ${r>0?`Осталось ${r} выгруз${r===1?'ка':r<5?'ки':'ок'}`:'Лимит исчерпан'}</p><div class="key-info"><strong>Для активации введите:</strong><br>1. Ваш email (для привязки ключа)<br>2. Ключ активации от администратора СК</div><label>Email:</label><input type="email" id="emailInput" placeholder="your@email.com" style="margin:8px 0"><label>Ключ активации:</label><input type="text" id="keyInput" class="key-input" placeholder="XXXX-XXXX-XXXX-XXXX" style="margin:8px 0"><div id="keyError" class="alert err hidden"></div><button class="btn btn-ok" onclick="activateKey()">Активировать</button><button class="btn btn-sec" onclick="closeKeyModal()">Закрыть</button><details style="margin-top:16px;font-size:12px;color:#6b7280"><summary style="cursor:pointer;font-weight:bold">🔑 Тестовые ключи (для разработчика)</summary><div style="margin-top:8px;padding:10px;background:#f0f9ff;border-radius:6px;border:1px solid #bae6fd"><p style="margin:4px 0"><strong>♾ Бессрочный:</strong><br><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-UNIVERSAL-MASTER</code></p><p style="margin:8px 0 4px"><strong> Тестовые (до 2028):</strong></p><p style="margin:2px 0"><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-TEST-2026-001</code></p><p style="margin:2px 0"><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-TEST-2026-002</code></p><p style="margin:2px 0"><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-TEST-2026-003</code></p><p style="margin:8px 0 4px"><strong> Премиум (до 2028):</strong><br><code style="background:#fff;padding:2px 6px;border-radius:3px">KARATE-PREMIUM-2026</code></p></div></details>`;
   }
   if(modal){modal.style.display='flex';modal.classList.add('active');}
 }
 
-function closeKeyModal(){
-  const modal=document.getElementById('keyModal');
-  if(modal){modal.style.display='none';modal.classList.remove('active');}
-}
-
+function closeKeyModal(){const modal=document.getElementById('keyModal');if(modal){modal.style.display='none';modal.classList.remove('active');}}
 function activateKey(){
-  const emailInput=document.getElementById('emailInput');
-  const keyInput=document.getElementById('keyInput');
-  const errorDiv=document.getElementById('keyError');
+  const emailInput=document.getElementById('emailInput');const keyInput=document.getElementById('keyInput');const errorDiv=document.getElementById('keyError');
   if(!emailInput||!keyInput||!errorDiv)return;
-  
-  if(!emailInput.value.trim()){
-    errorDiv.textContent='❌ Введите email для привязки ключа';
-    errorDiv.classList.remove('hidden');emailInput.focus();return;
-  }
-  if(!keyInput.value.trim()){
-    errorDiv.textContent='❌ Введите ключ активации';
-    errorDiv.classList.remove('hidden');keyInput.focus();return;
-  }
-  
+  if(!emailInput.value.trim()){errorDiv.textContent=' Введите email';errorDiv.classList.remove('hidden');emailInput.focus();return}
+  if(!keyInput.value.trim()){errorDiv.textContent='❌ Введите ключ активации';errorDiv.classList.remove('hidden');keyInput.focus();return}
   const result=LICENSE.activateKey(keyInput.value,emailInput.value);
-  if(result.success){
-    closeKeyModal();checkLicense();
-    alert(`✓ Лицензия активирована!\n\nEmail: ${result.email}\n${result.keyData.description}\n${result.keyData.maxExports===-1?'Выгрузок: безлимит':'Выгрузок: '+result.keyData.maxExports}`);
-  }else{
-    errorDiv.textContent=result.error;errorDiv.classList.remove('hidden');
-  }
+  if(result.success){closeKeyModal();checkLicense();alert(`✓ Лицензия активирована!\n\nEmail: ${result.email}\n${result.keyData.description}`)}
+  else{errorDiv.textContent=result.error;errorDiv.classList.remove('hidden')}
 }
 
-// ============ МАТРИЦА ДОЛЖНОСТЕЙ (КТ КАРАТЭ) ============
+// ============ МАТРИЦА ДОЛЖНОСТЕЙ ============
 const CAT_RANK={'ВК':5,'1К':4,'2К':3,'3К':2,'ЮС':1};
 const POSITIONS=['Главный судья','Главный секретарь','Зам. гл. судьи','Рефери','Арбитр','Судья','Судья-секретарь','Судья-хронометрист'];
 const STATUSES=['Чемпионат России','Кубок России','Первенство России','Всероссийская Спартакиада','Другие всероссийские','Международные','Чемпионат ФО','Первенство ФО','Другие межрегиональные','Чемпионат субъекта РФ','Кубок субъекта РФ','Первенство субъекта РФ','Другие соревнования субъекта РФ','Чемпионат муниципального образования','Первенство муниципального образования','Другие муниципальные'];
 const GRADES=['отлично','хорошо','удовл.','неудовл.'];
-
 const MIN_CAT={'Главный судья':{'Чемпионат России':'ВК','Кубок России':'ВК','Первенство России':'ВК','Всероссийская Спартакиада':'ВК','Другие всероссийские':'ВК','Международные':'ВК','Чемпионат ФО':'ВК','Первенство ФО':'ВК','Другие межрегиональные':'ВК','Чемпионат субъекта РФ':'1К','Кубок субъекта РФ':'1К','Первенство субъекта РФ':'1К','Другие соревнования субъекта РФ':'1К','Чемпионат муниципального образования':'1К','Первенство муниципального образования':'1К','Другие муниципальные':'1К'},'Главный секретарь':{'Чемпионат России':'ВК','Кубок России':'ВК','Первенство России':'ВК','Всероссийская Спартакиада':'ВК','Другие всероссийские':'ВК','Международные':'ВК','Чемпионат ФО':'ВК','Первенство ФО':'ВК','Другие межрегиональные':'ВК','Чемпионат субъекта РФ':'1К','Кубок субъекта РФ':'1К','Первенство субъекта РФ':'1К','Другие соревнования субъекта РФ':'1К','Чемпионат муниципального образования':'2К','Первенство муниципального образования':'2К','Другие муниципальные':'2К'},'Зам. гл. судьи':{'Чемпионат России':'ВК','Кубок России':'ВК','Первенство России':'ВК','Всероссийская Спартакиада':'ВК','Другие всероссийские':'ВК','Международные':'ВК','Чемпионат ФО':'1К','Первенство ФО':'1К','Другие межрегиональные':'1К','Чемпионат субъекта РФ':'1К','Кубок субъекта РФ':'1К','Первенство субъекта РФ':'1К','Другие соревнования субъекта РФ':'1К','Чемпионат муниципального образования':'2К','Первенство муниципального образования':'2К','Другие муниципальные':'2К'},'Рефери':{'Чемпионат России':'ВК','Кубок России':'ВК','Первенство России':'1К','Всероссийская Спартакиада':'1К','Другие всероссийские':'1К','Международные':'1К','Чемпионат ФО':'1К','Первенство ФО':'1К','Другие межрегиональные':'1К','Чемпионат субъекта РФ':'2К','Кубок субъекта РФ':'2К','Первенство субъекта РФ':'2К','Другие соревнования субъекта РФ':'2К','Чемпионат муниципального образования':'3К','Первенство муниципального образования':'3К','Другие муниципальные':'3К'},'Арбитр':{'Чемпионат России':'ВК','Кубок России':'ВК','Первенство России':'1К','Всероссийская Спартакиада':'1К','Другие всероссийские':'1К','Международные':'1К','Чемпионат ФО':'1К','Первенство ФО':'1К','Другие межрегиональные':'1К','Чемпионат субъекта РФ':'2К','Кубок субъекта РФ':'2К','Первенство субъекта РФ':'2К','Другие соревнования субъекта РФ':'2К','Чемпионат муниципального образования':'3К','Первенство муниципального образования':'3К','Другие муниципальные':'3К'},'Судья':{'Чемпионат России':'ВК','Кубок России':'ВК','Первенство России':'1К','Всероссийская Спартакиада':'1К','Другие всероссийские':'1К','Международные':'1К','Чемпионат ФО':'1К','Первенство ФО':'1К','Другие межрегиональные':'2К','Чемпионат субъекта РФ':'2К','Кубок субъекта РФ':'2К','Первенство субъекта РФ':'2К','Другие соревнования субъекта РФ':'2К','Чемпионат муниципального образования':'3К','Первенство муниципального образования':'3К','Другие муниципальные':'3К'},'Судья-секретарь':{'Чемпионат России':'2К','Кубок России':'2К','Первенство России':'3К','Всероссийская Спартакиада':'3К','Другие всероссийские':'3К','Международные':'3К','Чемпионат ФО':'3К','Первенство ФО':'3К','Другие межрегиональные':'3К','Чемпионат субъекта РФ':'3К','Кубок субъекта РФ':'3К','Первенство субъекта РФ':'3К','Другие соревнования субъекта РФ':'3К','Чемпионат муниципального образования':'3К','Первенство муниципального образования':'3К','Другие муниципальные':'3К'},'Судья-хронометрист':{'Чемпионат России':'2К','Кубок России':'2К','Первенство России':'3К','Всероссийская Спартакиада':'3К','Другие всероссийские':'3К','Международные':'3К','Чемпионат ФО':'3К','Первенство ФО':'3К','Другие межрегиональные':'3К','Чемпионат субъекта РФ':'3К','Кубок субъекта РФ':'3К','Первенство субъекта РФ':'3К','Другие соревнования субъекта РФ':'3К','Чемпионат муниципального образования':'3К','Первенство муниципального образования':'3К','Другие муниципальные':'3К'}};
-
 function getAllowedPositions(jc,status){if(!jc||!status)return[];const jr=CAT_RANK[jc];if(!jr)return[];return POSITIONS.filter(p=>{const m=MIN_CAT[p]?.[status];if(!m)return false;return jr>=CAT_RANK[m]})}
 function checkRecord(t,jc){if(!jc)return{ok:true,msg:''};const m=MIN_CAT[t.position]?.[t.status];if(!m)return{ok:false,msg:`Комбинация «${t.position}» + «${t.status}» не определена`};if(CAT_RANK[jc]<CAT_RANK[m])return{ok:false,msg:`Для «${t.position}» на «${t.status}» требуется минимум ${m}`};return{ok:true,msg:''}}
 
@@ -405,10 +377,10 @@ let tournaments=[],theory=[],exams=[],catsHistory=[];
 
 function onCategoryChange(){const jc=document.getElementById('currentCat').value;if(!jc){render();return}let fixedCount=0;tournaments.forEach(t=>{const allowed=getAllowedPositions(jc,t.status);if(allowed.length===0)return;if(!allowed.includes(t.position)){t.position=allowed[0];fixedCount++}});if(fixedCount>0){setTimeout(()=>{alert(`⚠ Внимание!\n\nПри смене категории на «${jc}» автоматически исправлено должностей: ${fixedCount}.`)},100)}render()}
 
-function render(){const cat=document.getElementById('category').value,req=KT[cat],jc=document.getElementById('currentCat').value;let alertsHtml='';if(!jc)alertsHtml+=`<div class="alert warn">⚠ Укажите действующую категорию судьи</div>`;if(cat==='ВК'){const e=tournaments.filter(t=>t.grade==='отлично').length;if(e<16)alertsHtml+=`<div class="alert warn">⚠ Для ВК нужно 16 «отлично», сейчас: ${e}</div>`}if(jc){const inv=tournaments.filter(t=>!checkRecord(t,jc).ok);if(inv.length>0)alertsHtml+=`<div class="alert err">⚠ Несоответствие КТ: ${inv.length} турниров с недопустимыми должностями</div>`;else if(tournaments.length>0)alertsHtml+=`<div class="alert ok">✓ Все должности соответствуют категории «${jc}»</div>`}if(!alertsHtml)alertsHtml=`<div class="alert ok">✓ Проверки пройдены</div>`;document.getElementById('alerts').innerHTML=alertsHtml;let h='';if(req.note&&req.groups.length===0)h+=`<div class="req-block"><b>Условие:</b> ${req.note}</div>`;req.groups.forEach(g=>{const c=countGroup(g),d=c>=g.need;h+=`<div class="req-block ${d?'done':'miss'}"><b>${g.name}</b> — нужно <b>${g.need}</b>, есть <b>${c}</b>${g.note?`<div style="font-size:11px;color:#6b7280">(${g.note})</div>`:''}<div class="progress"><div class="progress-bar" style="width:${Math.min(100,c/g.need*100)}%"></div></div></div>`});document.getElementById('requirements').innerHTML=h;const t=tournaments.length,e=tournaments.filter(t=>t.grade==='отлично').length;document.getElementById('summary').innerHTML=`<div class="summary-item"><div class="num">${t}</div><div class="lbl">Всего (нужно ${req.minTotal})</div></div><div class="summary-item"><div class="num">${e}</div><div class="lbl">«Отлично» (нужно ${req.minExcellent})</div></div><div class="summary-item"><div class="num">${req.period}</div><div class="lbl">Период</div></div>`;renderTournaments();renderTheory();renderExam();renderCats();renderPreview()}
+function render(){const cat=document.getElementById('category').value,req=KT[cat],jc=document.getElementById('currentCat').value;let alertsHtml='';if(!jc)alertsHtml+=`<div class="alert warn"> Укажите действующую категорию судьи</div>`;if(cat==='ВК'){const e=tournaments.filter(t=>t.grade==='отлично').length;if(e<16)alertsHtml+=`<div class="alert warn">⚠ Для ВК нужно 16 «отлично», сейчас: ${e}</div>`}if(jc){const inv=tournaments.filter(t=>!checkRecord(t,jc).ok);if(inv.length>0)alertsHtml+=`<div class="alert err">⚠ Несоответствие КТ: ${inv.length} турниров с недопустимыми должностями</div>`;else if(tournaments.length>0)alertsHtml+=`<div class="alert ok">✓ Все должности соответствуют категории «${jc}»</div>`}if(!alertsHtml)alertsHtml=`<div class="alert ok">✓ Проверки пройдены</div>`;document.getElementById('alerts').innerHTML=alertsHtml;let h='';if(req.note&&req.groups.length===0)h+=`<div class="req-block"><b>Условие:</b> ${req.note}</div>`;req.groups.forEach(g=>{const c=countGroup(g),d=c>=g.need;h+=`<div class="req-block ${d?'done':'miss'}"><b>${g.name}</b> — нужно <b>${g.need}</b>, есть <b>${c}</b>${g.note?`<div style="font-size:11px;color:#6b7280">(${g.note})</div>`:''}<div class="progress"><div class="progress-bar" style="width:${Math.min(100,c/g.need*100)}%"></div></div></div>`});document.getElementById('requirements').innerHTML=h;const t=tournaments.length,e=tournaments.filter(t=>t.grade==='отлично').length;document.getElementById('summary').innerHTML=`<div class="summary-item"><div class="num">${t}</div><div class="lbl">Всего (нужно ${req.minTotal})</div></div><div class="summary-item"><div class="num">${e}</div><div class="lbl">«Отлично» (нужно ${req.minExcellent})</div></div><div class="summary-item"><div class="num">${req.period}</div><div class="lbl">Период</div></div>`;renderTournaments();renderTheory();renderExam();renderCats();renderPreview()}
 function countGroup(g){return tournaments.filter(t=>g.positions.includes(t.position)&&g.levels.includes(t.status)).length}
 
-function renderTournaments(){const jc=document.getElementById('currentCat').value;let h=`<button class="btn" onclick="addTournament()">+ Турнир</button><button class="btn btn-sec" onclick="loadExample()">📋 Пример Матвеева</button>`;if(jc)h+=`<div class="hint ok">ℹ Категория судьи: <b>${jc}</b>. В списке должностей показываются ТОЛЬКО допустимые.</div>`;else h+=`<div class="hint">ℹ Укажите действующую категорию судьи.</div>`;h+=`<table class="data"><thead><tr><th>Дата</th><th>Место</th><th>Статус</th><th>Полное наименование</th><th>Должность</th><th>Оценка</th><th></th></tr></thead><tbody>`;tournaments.forEach((t,i)=>{const allowed=getAllowedPositions(jc,t.status);const check=checkRecord(t,jc);let positionsList;if(allowed.length===0)positionsList=[t.position,...POSITIONS.filter(p=>p!==t.position)];else if(allowed.includes(t.position))positionsList=allowed;else positionsList=[t.position,...allowed];const rowClass=check.ok?'':'invalid';const warnBadge=!check.ok?`<span class="warn-badge" title="${check.msg}">⚠</span>`:'';h+=`<tr class="${rowClass}"><td><input value="${t.date}" onchange="tournaments[${i}].date=this.value;render()"></td><td><input value="${t.place}" onchange="tournaments[${i}].place=this.value;render()"></td><td><select onchange="changeStatus(${i},this.value)">${STATUSES.map(s=>`<option ${s===t.status?'selected':''}>${s}</option>`).join('')}</select></td><td><input value="${t.fullName||''}" onchange="tournaments[${i}].fullName=this.value;render()"></td><td><select onchange="tournaments[${i}].position=this.value;render()">${positionsList.map(p=>`<option ${p===t.position?'selected':''}>${p}</option>`).join('')}</select>${warnBadge}</td><td><select onchange="tournaments[${i}].grade=this.value;render()">${GRADES.map(g=>`<option ${g===t.grade?'selected':''}>${g}</option>`).join('')}</select></td><td><button class="btn btn-warn" onclick="tournaments.splice(${i},1);render()">✕</button></td></tr>`});h+='</tbody></table>';document.getElementById('tournaments').innerHTML=h}
+function renderTournaments(){const jc=document.getElementById('currentCat').value;let h=`<button class="btn" onclick="addTournament()">+ Турнир</button><button class="btn btn-sec" onclick="loadExample()"> Пример Матвеева</button>`;if(jc)h+=`<div class="hint ok">ℹ Категория судьи: <b>${jc}</b>. В списке должностей показываются ТОЛЬКО допустимые.</div>`;else h+=`<div class="hint">ℹ Укажите действующую категорию судьи.</div>`;h+=`<table class="data"><thead><tr><th>Дата</th><th>Место</th><th>Статус</th><th>Полное наименование</th><th>Должность</th><th>Оценка</th><th></th></tr></thead><tbody>`;tournaments.forEach((t,i)=>{const allowed=getAllowedPositions(jc,t.status);const check=checkRecord(t,jc);let positionsList;if(allowed.length===0)positionsList=[t.position,...POSITIONS.filter(p=>p!==t.position)];else if(allowed.includes(t.position))positionsList=allowed;else positionsList=[t.position,...allowed];const rowClass=check.ok?'':'invalid';const warnBadge=!check.ok?`<span class="warn-badge" title="${check.msg}">⚠</span>`:'';h+=`<tr class="${rowClass}"><td><input value="${t.date}" onchange="tournaments[${i}].date=this.value;render()"></td><td><input value="${t.place}" onchange="tournaments[${i}].place=this.value;render()"></td><td><select onchange="changeStatus(${i},this.value)">${STATUSES.map(s=>`<option ${s===t.status?'selected':''}>${s}</option>`).join('')}</select></td><td><input value="${t.fullName||''}" onchange="tournaments[${i}].fullName=this.value;render()"></td><td><select onchange="tournaments[${i}].position=this.value;render()">${positionsList.map(p=>`<option ${p===t.position?'selected':''}>${p}</option>`).join('')}</select>${warnBadge}</td><td><select onchange="tournaments[${i}].grade=this.value;render()">${GRADES.map(g=>`<option ${g===t.grade?'selected':''}>${g}</option>`).join('')}</select></td><td><button class="btn btn-warn" onclick="tournaments.splice(${i},1);render()">✕</button></td></tr>`});h+='</tbody></table>';document.getElementById('tournaments').innerHTML=h}
 function changeStatus(i,ns){tournaments[i].status=ns;const jc=document.getElementById('currentCat').value,al=getAllowedPositions(jc,ns);if(al.length>0&&!al.includes(tournaments[i].position))tournaments[i].position=al[0];render()}
 function renderTheory(){let h=`<button class="btn" onclick="addTheory()">+ Занятие</button><table class="data"><thead><tr><th>Дата</th><th>Роль</th><th>Место</th><th>Описание</th><th>Оценка</th><th></th></tr></thead><tbody>`;theory.forEach((t,i)=>{h+=`<tr><td><input value="${t.date}" onchange="theory[${i}].date=this.value"></td><td><select onchange="theory[${i}].role=this.value"><option ${t.role==='Участник'?'selected':''}>Участник</option><option ${t.role==='Лектор'?'selected':''}>Лектор</option></select></td><td><input value="${t.place}" onchange="theory[${i}].place=this.value"></td><td><input value="${t.description||''}" onchange="theory[${i}].description=this.value"></td><td><input value="${t.grade}" onchange="theory[${i}].grade=this.value"></td><td><button class="btn btn-warn" onclick="theory.splice(${i},1);render()">✕</button></td></tr>`});h+='</tbody></table>';document.getElementById('theory').innerHTML=h}
 function renderExam(){let h=`<button class="btn" onclick="addExam()">+ Зачёт</button><table class="data"><thead><tr><th>Дата</th><th>Место</th><th>№ протокола</th><th>Тест</th><th>Видеотест ката</th><th></th></tr></thead><tbody>`;exams.forEach((e,i)=>{h+=`<tr><td><input value="${e.date}" onchange="exams[${i}].date=this.value"></td><td><input value="${e.place}" onchange="exams[${i}].place=this.value"></td><td><input value="${e.protocol||''}" onchange="exams[${i}].protocol=this.value"></td><td><input value="${e.testGrade||''}" onchange="exams[${i}].testGrade=this.value"></td><td><input value="${e.kataGrade||''}" onchange="exams[${i}].kataGrade=this.value"></td><td><button class="btn btn-warn" onclick="exams.splice(${i},1);render()">✕</button></td></tr>`});h+='</tbody></table>';document.getElementById('exam').innerHTML=h}
@@ -418,32 +390,4 @@ function addTheory(){theory.push({date:'',place:'',role:'Участник',descr
 function addExam(){exams.push({date:'',place:'',protocol:'',testGrade:'',kataGrade:''});render()}
 function addCat(){catsHistory.push({cat:'СС 1К',action:'присвоена',date:'',num:'',org:'',person:''});render()}
 
-function loadExample(){tournaments=[{date:'06.02.2022',place:'г. Новокузнецк',status:'Кубок субъекта РФ',fullName:'Кубок Кемеровской области и открытый турнир СК «Hajime»',position:'Главный судья',grade:'отлично'},{date:'25-28.02.2022',place:'г. Красноярск',status:'Первенство ФО',fullName:'Первенство Сибирского федерального округа (10-13 лет)',position:'Зам. гл. судьи',grade:'отлично'},{date:'25-28.04.2022',place:'г. Уфа',status:'Первенство России',fullName:'Первенство России (12-13 лет)',position:'Судья',grade:'отлично'},{date:'03.05.2022',place:'г. Новокузнецк',status:'Первенство субъекта РФ',fullName:'Первенство Кемеровской области',position:'Главный судья',grade:'отлично'},{date:'07-08.05.2022',place:'г. Барнаул',status:'Первенство ФО',fullName:'Первенство Сибирского федерального округа (14-20 лет)',position:'Рефери',grade:'отлично'},{date:'14-15.05.2022',place:'г. Кемерово',status:'Другие всероссийские',fullName:'Всероссийские соревнования «Престиж Кузбасса» памяти Токарева И.Ю.',position:'Зам. гл. судьи',grade:'отлично'},{date:'21.05.2022',place:'г. Новосибирск',status:'Чемпионат ФО',fullName:'Чемпионат Сибирского федерального округа',position:'Зам. гл. судьи',grade:'отлично'},{date:'18-22.08.2022',place:'г. Видное',status:'Первенство России',fullName:'Первенство России (14-20 лет)',position:'Судья',grade:'отлично'},{date:'30.09-02.10.2022',place:'г. Новосибирск',status:'Международные',fullName:'Международный турнир «Кубок маршала Покрышкина»',position:'Зам. гл. судьи',grade:'отлично'},{date:'23.10.2022',place:'г. Кемерово',status:'Чемпионат субъекта РФ',fullName:'Чемпионат Кемеровской области-Кузбасса',position:'Главный судья',grade:'отлично'},{date:'05.02.2023',place:'г. Новокузнецк',status:'Кубок субъекта РФ',fullName:'Кубок Кемеровской области-Кузбасса',position:'Главный судья',grade:'отлично'},{date:'18-20.03.2023',place:'г. Барнаул',status:'Первенство ФО',fullName:'Первенство Сибирского федерального округа',position:'Судья',grade:'отлично'},{date:'31.03-02.04.2023',place:'г. Новосибирск',status:'Другие всероссийские',fullName:'Всероссийские соревнования «Кубок Успеха»',position:'Судья',grade:'отлично'},{date:'21-24.04.2023',place:'г. Нальчик',status:'Первенство России',fullName:'Первенство России (12-13 лет)',position:'Судья',grade:'отлично'},{date:'12-14.05.2023',place:'г. Кемерово',status:'Другие всероссийские',fullName:'Всероссийские соревнования «Престиж Кузбасса»',position:'Зам. гл. судьи',grade:'отлично'},{date:'27.05.2023',place:'г. Новосибирск',status:'Чемпионат ФО',fullName:'Чемпионат Сибирского федерального округа',position:'Рефери',grade:'отлично'},{date:'06-08.10.2023',place:'г. Новосибирск',status:'Другие всероссийские',fullName:'Всероссийские соревнования «Кубок Покрышкина»',position:'Судья',grade:'отлично'},{date:'15.10.2023',place:'г. Кемерово',status:'Чемпионат субъекта РФ',fullName:'Чемпионат Кемеровской области-Кузбасса',position:'Главный судья',grade:'отлично'},{date:'19-20.10.2023',place:'г. Новокузнецк',status:'Первенство ФО',fullName:'Первенство Сибирского федерального округа (14-20 лет)',position:'Зам. гл. судьи',grade:'отлично'},{date:'01-03.12.2023',place:'г. Южно-Сахалинск',status:'Первенство России',fullName:'Первенство России (14-20 лет)',position:'Судья',grade:'отлично'},{date:'19-21.01.2024',place:'г. Омск',status:'Другие всероссийские',fullName:'Всероссийские соревнования «Кубок Прииртышья»',position:'Судья',grade:'отлично'}];theory=[{date:'30.10.2020',place:'г. Новосибирск',role:'Участник',description:'Судейский аттестационный семинар по каратэ ВКФ. Новосибирск. Сдача теоретического и практического экзамена.',grade:'Отлично'},{date:'15.04.2021',place:'г. Омск',role:'Участник',description:'Судейский аттестационный семинар по каратэ ВКФ. Омск. Сдача теоретического и практического экзамена.',grade:'Отлично'},{date:'31.03.2022',place:'г. Новосибирск',role:'Участник',description:'Судейский аттестационный семинар по каратэ ВКФ. Новосибирск. Сдача теоретического и практического экзамена.',grade:'Отлично'},{date:'21.04.2023',place:'г. Нальчик',role:'Участник',description:'Судейский аттестационный семинар по каратэ ВКФ. Нальчик. Сдача теоретического и практического экзамена.',grade:'Отлично'}];exams=[{date:'30.10.2020',place:'г. Новосибирск',protocol:'17',testGrade:'Зачтено',kataGrade:''},{date:'15.04.2021',place:'г. Омск',protocol:'18',testGrade:'Зачтено',kataGrade:''},{date:'31.03.2022',place:'г. Новосибирск',protocol:'4',testGrade:'Зачтено',kataGrade:''},{date:'21.04.2023',place:'г. Нальчик',protocol:'6',testGrade:'Зачтено',kataGrade:''}];catsHistory=[{cat:'СС 1К',action:'присвоена',date:'10.02.2017',num:'64',org:'Департамент молодежной политики и спорта Кемеровской области',person:'Пятовский А.А.'},{cat:'СС 1К',action:'подтверждена',date:'09.02.2019',num:'8',org:'Федерация каратэ Кемеровской области',person:'Башкиров В.Б.'},{cat:'СС 1К',action:'подтверждена',date:'05.02.2021',num:'12',org:'Федерация каратэ Кемеровской области',person:'Башкиров В.Б.'},{cat:'СС 1К',action:'подтверждена',date:'04.02.2023',num:'19',org:'Федерация каратэ Кемеровской области',person:'Башкиров В.Б.'}];document.getElementById('currentCat').value='1К';document.getElementById('category').value='ВК';document.getElementById('currentCatDate').value='2023-02-04';document.getElementById('currentCatDoc').value='Приказ №19';document.getElementById('sportTitle').value='МС';document.getElementById('recordDate').value='2023-12-06';document.getElementById('submitDate').value='2024-02-26';render()}
-
-function showTab(id,el){['tournaments','theory','exam','cats'].forEach(t=>document.getElementById(t).classList.add('hidden'));document.getElementById(id).classList.remove('hidden');el.parentElement.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));el.classList.add('active')}
-
-function getD(){const ids=['category','currentCat','currentCatDate','currentCatDoc','submitDate','sportTitle','sport','sportCode','lastName','firstName','middleName','birthDate','region','municipality','address','workplace','education','phone','email','judgeStartDate','orgName','orgAddress','orgContacts','fedName','fedPosition','fedPerson','govName','govPosition','govPerson','osfHead','respPerson','cardKeeper','recordDate'];const d={};ids.forEach(id=>d[id]=document.getElementById(id).value);return d}
-function fmtDate(d){if(!d)return'___.___.______';const[y,m,day]=d.split('-');return`${day}.${m}.${y}`}
-const CAT_FULL={'ВК':'спортивный судья всероссийской категории','1К':'спортивный судья первой категории','2К':'спортивный судья второй категории','3К':'спортивный судья третьей категории','ЮС':'юный спортивный судья'};
-
-function buildPage1_Presentation(d){const th=theory.slice(-3);while(th.length<3)th.push({date:'',place:'',description:'',grade:''});const catName=CAT_FULL[d.category],ccn=d.currentCat?(CAT_FULL[d.currentCat]||d.currentCat):'';const stt=d.sportTitle==='МС'?'Мастер спорта РФ по '+d.sport:(d.sportTitle==='МСМК'?'Мастер спорта РФ международного класса по '+d.sport:'');const tournRows=tournaments.map(t=>`<tr><td style="width:18%;padding:1px 2px;font-size:7pt">${t.date}</td><td style="width:54%;padding:1px 2px;font-size:7pt">${t.fullName||t.status}<br><i style="font-size:6pt">${t.status}</i></td><td style="width:28%;padding:1px 2px;font-size:7pt">${t.position}<br>${t.grade}</td></tr>`).join('');let signBlock='';if(d.category==='ВК'){signBlock=`<table style="width:100%;border-collapse:collapse;border:none;font-size:7.5pt;margin-top:6px"><tr><td style="border:none;padding:2px 0;width:50%"><p style="margin:0">_____________________________________________</p><p class="small" style="margin:0">Наименование региональной спортивной федерации</p><p style="margin:2px 0 0 0">${d.fedName||''}</p><p style="margin:1px 0">________________ ________________</p><p class="small" style="margin:0">Должность (Фамилия, инициалы)</p><p style="margin:0">${d.fedPosition} ${d.fedPerson}</p><p style="margin:0">Дата ____________ Подпись ____________</p><p style="margin:0">Место печати (при наличии)</p></td><td style="border:none;padding:2px 0 2px 10px;width:50%"><p style="margin:0">____________________________________________________________</p><p class="small" style="margin:0">Наименование органа исполнительной власти субъекта РФ</p><p style="margin:2px 0 0 0">${d.govName}</p><p style="margin:1px 0">________________ ________________</p><p class="small" style="margin:0">Должность (Фамилия, инициалы)</p><p style="margin:0">${d.govPosition} ${d.govPerson}</p><p style="margin:0">Дата ____________ Подпись ____________</p><p style="margin:0">Место печати (при наличии)</p></td></tr><tr><td style="border:none;padding:2px 0" colspan="2"><p style="margin:4px 0 0 0"><b>Решение общероссийской спортивной федерации:</b></p><p style="margin:0">протокол от «_____» _______________ 20___ г. № _____</p></td></tr><tr><td style="border:none;padding:2px 0;width:50%"><p style="margin:0">_____________________________________________ ________________________</p><p class="small" style="margin:0">Руководитель общероссийской спортивной федерации</p><p style="margin:0">${d.osfHead||''}</p><p style="margin:0">Дата ____________ Подпись ____________</p></td><td style="border:none;padding:2px 0 2px 10px;width:50%"><p style="margin:0">____________________ _____________________ _______________</p><p class="small" style="margin:0">Должностное лицо Подпись</p><p style="margin:0">Место печати (при наличии)</p></td></tr><tr><td style="border:none;padding:2px 0" colspan="2"><p style="margin:0">Ответственный исполнитель _____________________ _______________</p><p class="small" style="margin:0">(Фамилия, инициалы) Подпись</p><p style="margin:0">${d.respPerson||''}</p></td></tr></table>`}else{signBlock=`<table style="width:100%;border-collapse:collapse;border:none;font-size:7.5pt;margin-top:6px"><tr><td style="border:none;padding:2px 0"><p style="margin:0">_____________________________________________</p><p class="small" style="margin:0">Наименование региональной спортивной федерации</p><p style="margin:2px 0 0 0">${d.fedName||''}</p><p style="margin:1px 0">________________ ________________</p><p class="small" style="margin:0">Должность (Фамилия, инициалы)</p><p style="margin:0">${d.fedPosition} ${d.fedPerson}</p><p style="margin:0">Дата ____________ Подпись ____________</p><p style="margin:0">Место печати (при наличии)</p></td></tr></table>`}return`<div class="doc-page"><h1 class="doc-title">Представление к присвоению квалификационной категории спортивного судьи</h1><div class="cat-name">${catName}</div><table class="form" style="table-layout:fixed"><tr><td colspan="4" class="hdr">Дата поступления представления и документов</td><td colspan="2" class="hdr">фото 3×4</td><td colspan="5" class="hdr">Наименование действующей категории</td><td rowspan="15" style="vertical-align:top;padding:0;width:50%"><table style="width:100%;border-collapse:collapse;font-size:7pt"><tr><th style="border:1px solid #000;padding:1px 2px;background:#f0f0f0;width:18%">Сроки проведения</th><th style="border:1px solid #000;padding:1px 2px;background:#f0f0f0;width:54%">Наименование и статус</th><th style="border:1px solid #000;padding:1px 2px;background:#f0f0f0;width:28%">Статус судьи / Оценка</th></tr>${tournRows}</table></td></tr><tr><td colspan="4"></td><td colspan="2"><div class="photo-box">3×4</div></td><td colspan="5">${ccn}<br><br>Дата: ${fmtDate(d.currentCatDate)}<br>${d.currentCatDoc||''}</td></tr><tr><td class="hdr">Фамилия</td><td colspan="10">${d.lastName}</td></tr><tr><td class="hdr">Имя</td><td colspan="10">${d.firstName}</td></tr><tr><td class="hdr">Отчество (при наличии)</td><td colspan="10">${d.middleName}</td></tr><tr><td class="hdr">Дата рождения</td><td colspan="4">${fmtDate(d.birthDate)}</td><td class="hdr">Вид спорта</td><td colspan="5">${d.sport}</td></tr><tr><td class="hdr">Субъект РФ</td><td colspan="4">${d.region}</td><td class="hdr">Номер-код вид спорта</td><td colspan="5">${d.sportCode}</td></tr><tr><td class="hdr">Адрес (место жительства)</td><td colspan="4">${d.address}</td><td class="hdr">Организация, осуществляющая учёт</td><td colspan="5">${d.orgName}, ${d.orgAddress}</td></tr><tr><td class="hdr">Место работы, должность</td><td colspan="10">${d.workplace}</td></tr><tr><td class="hdr">Образование</td><td colspan="4">${d.education}</td><td class="hdr">Спортивное звание</td><td colspan="5">${stt}</td></tr><tr><td colspan="11" class="hdr">Участие в теоретических занятиях, сдача квалификационного зачета</td></tr><tr><td class="hdr center">№</td><td colspan="4" class="hdr">Дата</td><td colspan="5" class="hdr">Место проведения</td><td class="hdr">Оценка</td></tr>${th.map((t,i)=>`<tr><td class="center">${i+1}</td><td colspan="4">${t.date||''}</td><td colspan="5">${t.description||t.place||''}</td><td>${t.grade||''}</td></tr>`).join('')}</table>${signBlock}</div>`}
-
-function buildPage2_CardHeader(d){const cr=catsHistory.map(c=>`<tr><td>${c.cat}</td><td>${c.action}</td><td>${c.date}</td><td>${c.num||''}</td><td>${c.org||''}</td><td>${c.person||''}</td><td></td></tr>`).join('');const stt=d.sportTitle==='МС'?'Мастер спорта РФ по '+d.sport:(d.sportTitle==='МСМК'?'Мастер спорта РФ международного класса по '+d.sport:'');return`<div class="doc-page"><h1 class="doc-title">Карточка учёта судейской деятельности спортивного судьи</h1><table class="card-top"><tr><td class="hdr">Наименование вида спорта</td><td colspan="3">${d.sport}</td><td class="hdr">Номер-код вида спорта</td><td colspan="3">${d.sportCode}</td></tr><tr><td class="hdr">Фамилия</td><td colspan="3">${d.lastName}</td><td class="hdr">Имя</td><td colspan="3">${d.firstName}</td></tr><tr><td class="hdr">Отчество (при наличии)</td><td colspan="3">${d.middleName}</td><td class="hdr">Дата рождения</td><td colspan="3">${fmtDate(d.birthDate)}</td></tr><tr><td class="hdr">Субъект РФ</td><td colspan="3">${d.region}</td><td class="hdr">Муниципальное образование</td><td colspan="3">${d.municipality}</td></tr><tr><td class="hdr">Спортивное звание в данном виде спорта (при наличии)</td><td colspan="3">${stt}</td><td class="hdr">Дата начала судейской деятельности</td><td colspan="3">${fmtDate(d.judgeStartDate)}</td></tr><tr><td class="hdr">Образование</td><td colspan="3">${d.education}</td><td class="hdr">Место работы (учёбы), должность</td><td colspan="3">${d.workplace}</td></tr><tr><td class="hdr">Контактные телефоны, адрес электронной почты</td><td colspan="8">тел.: ${d.phone}; e-mail: ${d.email}</td></tr><tr><td class="hdr">Организация, осуществляющая учёт судейской деятельности спортивного судьи</td><td colspan="8"><table style="width:100%;border-collapse:collapse;border:none"><tr><td style="border:none;padding:0"><b>Наименование:</b> ${d.orgName}</td></tr><tr><td style="border:none;padding:0"><b>Адрес (место нахождения):</b> ${d.orgAddress}</td></tr><tr><td style="border:none;padding:0"><b>Телефон, адрес электронной почты:</b> ${d.orgContacts}</td></tr></table></td></tr></table><div class="section-title">Сведения о присвоении / подтверждении / лишении / восстановлении квалификационной категории спортивного судьи</div><table class="card-cats"><tr><th style="width:13%">Наименование квалификационной категории</th><th style="width:13%">Присвоена / подтверждена / лишена / восстановлена</th><th style="width:10%">Дата (число, месяц, год)</th><th style="width:8%">Реквизиты документа: №</th><th style="width:25%">Наименование организации, принявшей решение</th><th style="width:15%">Фамилия и инициалы должностного лица</th><th style="width:16%">Печать организации, подпись, ФИО лица, ответственного за оформление карточки учёта</th></tr>${cr}</table></div>`}
-
-function buildPage3_Theory(d){const tr=[];theory.forEach(t=>{if(t.role==='Лектор')tr.push({ld:t.date,lp:t.place,lg:t.grade,pd:'',pp:'',ed:'',ep:'',eg:'',fd:'',fp:'',ft:'',fg:''});else tr.push({ld:'',lp:'',lg:'',pd:t.date,pp:t.place,ed:'',ep:'',eg:'',fd:'',fp:'',ft:'',fg:''})});exams.forEach(e=>tr.push({ld:'',lp:'',lg:'',pd:'',pp:'',ed:e.date,ep:e.protocol,eg:e.testGrade,fd:'',fp:'',ft:'',fg:''}));const rds=fmtDate(d.recordDate)+' г.',ki=`${d.orgName}<br>${rds}, ${d.cardKeeper}`;const th=tr.map(r=>`<tr><td>${r.ld}</td><td>${r.lp}</td><td>${r.lg}</td><td>${r.pd}</td><td>${r.pp}</td><td>${r.ed}</td><td>${r.ep}</td><td>${r.eg}</td><td>${r.fd}</td><td>${r.fp}</td><td>${r.ft}</td><td>${r.fg}</td><td style="font-size:6pt">${ki}</td></tr>`).join('');return`<div class="doc-page"><div class="section-title">Теоретическая подготовка, выполнение тестов по физической подготовке, сдача квалификационного зачёта (экзамена)</div><table class="card-cats"><tr><th colspan="3">Участие в теоретической подготовке в качестве</th><th colspan="2">Участие в теоретической подготовке в качестве</th><th colspan="3">Сдача квалификационного зачёта (экзамена)</th><th colspan="4">Выполнение тестов по физической подготовке</th><th>Проводящая организация, дата внесения записи, подпись, ФИО лица, ответственного за оформление карточки учёта</th></tr><tr><th colspan="3" style="text-align:center;font-size:6.5pt">Лектора</th><th colspan="2" style="text-align:center;font-size:6.5pt">Участника</th><th colspan="3"></th><th colspan="4"></th><th></th></tr><tr><th>Дата</th><th>Место проведения (адрес)</th><th>Оценка</th><th>Дата</th><th>Место проведения (адрес)</th><th>Дата</th><th>№ протокола</th><th>Оценка</th><th>Дата</th><th>Место проведения (адрес)</th><th>Статус спортивного судьи, наименование теста, результат</th><th>Оценка</th><th></th></tr>${th}</table></div>`}
-
-function buildPage4_Practice(d){const rds=fmtDate(d.recordDate)+' г.';const pr=tournaments.map(t=>`<tr><td style="width:10%">${t.date}</td><td style="width:12%">${t.place}</td><td style="width:11%">${t.position}</td><td style="width:45%">${t.fullName||t.status}</td><td style="width:7%">${t.grade}</td><td style="width:15%;font-size:6.5pt">${rds}, ${d.cardKeeper}</td></tr>`).join('');return`<div class="doc-page"><div class="section-title">Практика судейства официальных спортивных соревнований</div><table class="card-cats"><tr><th style="width:10%">Дата проведения</th><th style="width:12%">Место проведения (адрес)</th><th style="width:11%">Статус спортивного судьи</th><th style="width:45%">Наименование и статус официальных спортивных соревнований, вид программы</th><th style="width:7%">Оценка</th><th style="width:15%">Дата внесения записи, подпись, ФИО лица, ответственного за оформление карточки учёта</th></tr>${pr}</table></div>`}
-
-function renderPreview(){const d=getD();const container=document.getElementById('preview-container');container.innerHTML=buildPage1_Presentation(d)+buildPage2_CardHeader(d)+buildPage3_Theory(d)+buildPage4_Practice(d)}
-
-function exportWord(){if(!LICENSE.canExport()){showKeyModal();return}const d=getD();const html=`<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset="utf-8"><title>Документы</title><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]--><style>@page WordSection1 {size: 29.7cm 21.0cm;mso-page-orientation: landscape;margin: 0.5cm 0.5cm 0.5cm 0.5cm;mso-header-margin: 0.3cm;mso-footer-margin: 0.3cm;}div.WordSection1 { page: WordSection1; }body { font-family: 'Times New Roman', serif; font-size: 9pt; }table { border-collapse: collapse; width: 100%; }td, th { border: 1px solid #000; padding: 1px 3px; vertical-align: top; }.hdr { background: #f0f0f0; font-weight: bold; text-align: center; font-size: 6.5pt; }.doc-title { text-align: center; font-weight: bold; font-size: 11pt; text-transform: uppercase; margin: 0 0 4px; }.cat-name { text-align: right; font-style: italic; font-size: 7.5pt; }.section-title { font-weight: bold; text-align: center; text-transform: uppercase; margin: 6px 0 3px; font-size: 8pt; }.sign-block { margin-top: 6px; font-size: 7.5pt; }.sign-block p { margin: 1px 0; }.small { font-size: 6.5pt; font-style: italic; }.center { text-align: center; }.photo-box { width: 40px; height: 55px; border: 1px solid #000; text-align: center; font-size: 6pt; }.page-break { page-break-before: always; mso-break-type: section-break; break-before: page; }.doc-page { padding: 0; }.card-top td { padding: 1px 3px; font-size: 7.5pt; }.card-cats td, .card-cats th { padding: 1px 2px; font-size: 7pt; }.card-cats th { background: #f0f0f0; text-align: center; font-size: 6.5pt; }</style></head><body><div class="WordSection1">${buildPage1_Presentation(d)}<div class="page-break"></div>${buildPage2_CardHeader(d)}<div class="page-break"></div>${buildPage3_Theory(d)}<div class="page-break"></div>${buildPage4_Practice(d)}</div></body></html>`;const blob=new Blob(['\ufeff',html],{type:'application/msword'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`Документы_${d.lastName}_${d.category}.doc`;a.click();URL.revokeObjectURL(url);const nc=LICENSE.incrementExportCount();checkLicense();if(!LICENSE.canExport()){setTimeout(()=>{alert(`Вы использовали все доступные выгрузки.\nДля неограниченного доступа активируйте программу ключом.`);showKeyModal()},500)}}
-
-function exportPDF(){if(!LICENSE.canExport()){showKeyModal();return}const d=getD();const node=document.createElement('div');node.style.cssText='background:#fff;font-family:Times New Roman,serif';node.innerHTML=buildPage1_Presentation(d)+'<div style="page-break-before:always"></div>'+buildPage2_CardHeader(d)+'<div style="page-break-before:always"></div>'+buildPage3_Theory(d)+'<div style="page-break-before:always"></div>'+buildPage4_Practice(d);document.body.appendChild(node);html2pdf().from(node).set({margin:[5,5,5,5],filename:`Документы_${d.lastName}_${d.category}.pdf`,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2,useCORS:true,letterRendering:true},jsPDF:{unit:'mm',format:'a4',orientation:'landscape'}}).save().then(()=>{document.body.removeChild(node);const nc=LICENSE.incrementExportCount();checkLicense();if(!LICENSE.canExport()){setTimeout(()=>{alert(`Вы использовали все доступные выгрузки.\nДля неограниченного доступа активируйте программу ключом.`);showKeyModal()},500)}})}
-
-function saveLocal(){const data={form:{},tournaments,theory,exams,catsHistory};document.querySelectorAll('input,select').forEach(el=>{if(el.id)data.form[el.id]=el.value});localStorage.setItem('judgeDocs',JSON.stringify(data));alert('Сохранено')}
-function loadLocal(){const s=localStorage.getItem('judgeDocs');if(!s){alert('Нет данных');return}const data=JSON.parse(s);Object.keys(data.form).forEach(k=>{const el=document.getElementById(k);if(el)el.value=data.form[k]});tournaments=data.tournaments||[];theory=data.theory||[];exams=data.exams||[];catsHistory=data.catsHistory||[];render();alert('Загружено')}
-
-loadExample();render();checkLicense();
-</script>
-</body>
-</html>
+function loadExample(){tournaments=[{date:'06.02.2022',place:'г. Новокузнецк',status:'Кубок субъекта РФ',fullName:'Кубок Кемеровской области и открытый турнир СК «Hajime»',position:'Главный судья',grade:'отлично'},{date:'25-28.02.2022',place:'г. Красноярск',status:'Первенство ФО',fullName:'Первенство Сибирского федерального округа (10-13 лет)',position:'Зам. гл. судьи',grade:'отлично'},{date:'25-28.04.2022',place:'г. Уфа',status:'Первенство России',fullName:'Первенство России (12-13 лет)',position:'Судья',grade:'отлично'},{date:'03.05.2022',place:'г. Новокузнецк',status:'Первенство субъекта РФ',fullName:'Первенство Кемеровской области',position:'Главный судья',grade:'отлично'},{date:'07-08.05.2022',place:'г. Барнаул',status:'Первенство ФО',fullName:'Первенство Сибирского федерального округа (14-20 лет)',position:'Рефери',grade:'отлично'},{date:'14-15.05.2022',place:'г. Кемерово',status:'Другие всероссийские',fullName:'Всероссийские соревнования «Престиж Кузбасса» памяти Токарева И.Ю.',position:'Зам. гл. судьи',grade:'отлично'},{date:'21.05.2022',place:'г. Новосибирск',status:'Чемпионат ФО',fullName:'Чемпионат Сибирского федерального округа',position:'Зам. гл. судьи',grade:'отлично'},{date:'18-22.08.2022',place:'г. Видное',status:'Первенство России',fullName:'Первенство России (14-20 лет)',position:'Судья',grade:'отлично'},{date:'30.09-02.10.2022',place:'г. Новосибирск',status:'Международные',fullName:'Международный турнир «Кубок маршала Покрышкина»',position:'Зам. гл. судьи',grade:'отлично'},{date:'23.10.2022',place:'г. Кемерово',status:'Чемпионат субъекта РФ',fullName:'Чемпионат Кемеровской области-Кузбасса',position:'Главный судья',grade:'отлично'},{date:'05.02.2023',place:'г. Новокузнецк',status:'Кубок субъекта РФ',fullName:'Кубок Кемеровской области-Кузбасса',position:'Главный судья',grade:'отлично'},{date:'18-20.03.2023',place:'г. Барнаул',status:'Первенство ФО',fullName:'Первенство Сибирского федерального округа',position:'Судья',grade:'отлично'},{date:'31.03-02.04.2023',place:'г. Новосибирск',status:'Другие всероссийские',fullName:'Всероссийские соревнования «Кубок Успеха»',position:'Судья',grade:'отлично'},{date:'21-24.04.2023',place:'г. Нальчик',status:'Первенство России',fullName:'Первенство России (12-13 лет)',position:'Судья',grade:'отлично'},{date:'12-14.05.2023',place:'г. Кемерово',status:'Другие всероссийские',fullName:'Всероссийские соревнования «Престиж Кузбасса»',position:'Зам. гл. судьи',grade:'отлично'},{date:'27.05.2023',place:'г. Новосибирск',status:'Чемпионат ФО',fullName:'Чемпионат Сибирского федерального округа',position:'Рефери',grade:'отлично'},{date:'06-08.10.2023',place:'г. Новосибирск',status:'Другие всероссийские',fullName:'Всероссийские соревнования «Кубок Покрышкина»',position:'Судья',grade:'отлично'},{date:'15.10.2023',place:'г. Кемерово',status:'Чемпионат субъекта РФ',fullName:'Чемпионат Кемеровской области-Кузбасса',position:'Главный судья',grade:'отлично'},{date:'19-20.10.2023',place:'г. Новокузнецк',status:'Первенство ФО',fullName:'Первенство Сибирского федерального округа (14-20 лет)',position:'Зам. гл. судьи',grade:'отлично'},{date:'01-03.12.2023',place:'г. Южно-Сахалинск',status:'Первенство России',fullName:'Первенство России (14-20 лет)',position:'Судья',grade:'отлично'},{date:'19-21.01.2024',place:'г. Омск',status:'Другие всероссийские',fullName:'Всероссийские соревнования «Кубок Прииртышья»',position

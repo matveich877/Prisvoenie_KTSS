@@ -29,6 +29,7 @@ th { background: #f3f4f6; }
 .stat-card { background: #f9fafb; padding: 16px; border-radius: 8px; text-align: center; border-left: 4px solid #1e40af; }
 .stat-card .num { font-size: 28px; font-weight: 700; color: #1e40af; }
 .stat-card .lbl { font-size: 12px; color: #6b7280; }
+.hint { font-size: 11px; color: #6b7280; margin-top: 4px; padding: 6px; background: #fefce8; border-left: 3px solid #eab308; border-radius: 3px; }
 </style>
 </head>
 <body>
@@ -61,7 +62,8 @@ th { background: #f3f4f6; }
 
 <div class="card">
   <h2>🔑 Генерация нового ключа</h2>
-  <div class="grid">
+  <div class="hint">ℹ Укажите конкретную дату окончания действия ключа. Ключ будет активен до конца этого дня включительно.</div>
+  <div class="grid" style="margin-top:12px">
     <div>
       <label>Тип ключа</label>
       <select id="keyType">
@@ -72,8 +74,8 @@ th { background: #f3f4f6; }
       </select>
     </div>
     <div>
-      <label>Срок действия (дней)</label>
-      <input type="number" id="keyDays" value="730">
+      <label> Дата окончания действия ключа</label>
+      <input type="date" id="keyExpiryDate">
     </div>
     <div>
       <label>Привязка к email (опционально)</label>
@@ -108,13 +110,13 @@ th { background: #f3f4f6; }
 </div>
 
 <div class="card">
-  <h2> Активации (кто использовал ключи)</h2>
-  <button class="btn btn-sec" onclick="renderActivations()">🔄 Обновить</button>
+  <h2>👥 Активации (кто использовал ключи)</h2>
+  <button class="btn btn-sec" onclick="renderActivations()"> Обновить</button>
   <div id="activationsList"></div>
 </div>
 
 <div class="card">
-  <h2>⚙️ Настройки</h2>
+  <h2>️ Настройки</h2>
   <button class="btn btn-warn" onclick="changePassword()">🔑 Сменить пароль админа</button>
   <button class="btn btn-sec" onclick="logout()">🚪 Выйти</button>
 </div>
@@ -164,24 +166,51 @@ async function changePassword() {
   alert('✓ Пароль изменён');
 }
 
+// Устанавливаем дату по умолчанию: сегодня + 2 года
+function setDefaultExpiryDate() {
+  const dateInput = document.getElementById('keyExpiryDate');
+  const today = new Date();
+  today.setFullYear(today.getFullYear() + 2);
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  dateInput.value = `${yyyy}-${mm}-${dd}`;
+}
+
 if (sessionStorage.getItem('adminAuth') === 'true') {
   document.getElementById('loginSection').style.display = 'none';
   document.getElementById('adminSection').style.display = 'block';
+  setDefaultExpiryDate();
   renderStats(); renderKeys(); renderActivations();
 }
 
 function generateKey() {
   const type = document.getElementById('keyType').value;
-  const days = parseInt(document.getElementById('keyDays').value);
+  const expiryDate = document.getElementById('keyExpiryDate').value;
   const email = document.getElementById('keyEmail').value.trim();
   const devices = parseInt(document.getElementById('keyDevices').value);
+  
+  // Проверка даты
+  if (!expiryDate) {
+    alert(' Укажите дату окончания действия ключа');
+    return;
+  }
+  
+  // Проверка, что дата не в прошлом
+  const selectedDate = new Date(expiryDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (selectedDate < today) {
+    if (!confirm('⚠️ Выбранная дата уже прошла. Ключ будет сразу считаться истёкшим. Продолжить?')) {
+      return;
+    }
+  }
+  
   const prefix = 'KARATE';
   const random = Math.random().toString(36).substring(2, 8).toUpperCase();
   const date = new Date().toISOString().split('T')[0].replace(/-/g, '').substring(2);
   const keyCode = `${prefix}-${type.toUpperCase().substring(0, 4)}-${date}-${random}`;
-  const expires = new Date();
-  expires.setDate(expires.getDate() + days);
-  const expiresAt = expires.toISOString().split('T')[0];
+  
   let maxExports, description;
   switch(type) {
     case 'test': maxExports = 10; description = `Тестовый ключ${email ? ' для ' + email : ''}`; break;
@@ -189,9 +218,19 @@ function generateKey() {
     case 'universal': maxExports = -1; description = `Универсальный безлимит${email ? ' для ' + email : ''}`; break;
     case 'custom': maxExports = parseInt(document.getElementById('customExports').value); description = document.getElementById('customDesc').value || `Ключ${email ? ' для ' + email : ''}`; break;
   }
+  
   const keys = JSON.parse(localStorage.getItem('adminKeys') || '{}');
-  keys[keyCode] = { type, maxExports, expiresAt, maxDevices: devices, description, email: email || null, createdAt: new Date().toISOString() };
+  keys[keyCode] = { 
+    type, 
+    maxExports, 
+    expiresAt: expiryDate,  // ← используем выбранную дату напрямую
+    maxDevices: devices, 
+    description, 
+    email: email || null, 
+    createdAt: new Date().toISOString() 
+  };
   localStorage.setItem('adminKeys', JSON.stringify(keys));
+  
   document.getElementById('generatedKey').innerHTML = `
     <div style="background:#f0fdf4;border:2px solid #16a34a;border-radius:8px;padding:16px">
       <p style="margin:0 0 8px"><strong>✓ Ключ сгенерирован:</strong></p>
@@ -199,7 +238,7 @@ function generateKey() {
       <p style="margin:0;font-size:12px;color:#6b7280">
         Тип: ${description}<br>
         Выгрузок: ${maxExports === -1 ? 'безлимит' : maxExports}<br>
-        Действует до: ${expiresAt}<br>
+        Действует до: <b>${expiryDate}</b><br>
         Устройств: ${devices === -1 ? 'безлимит' : devices}
         ${email ? '<br>Привязан к: ' + email : ''}
       </p>
