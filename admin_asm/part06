@@ -1,4 +1,9 @@
-eqFio','reqEmail','reqRegion','reqComment'].forEach(id=>document.getElementById(id).value='');
+
+    paidAt:null, issuedAt:null, closedAt:null,
+    keyCode:null
+  };
+  const list=getRequests();list.unshift(req);saveRequests(list);
+  ['reqFio','reqEmail','reqRegion','reqComment'].forEach(id=>document.getElementById(id).value='');
   renderRequests();renderOverview();updateBadge();
   alert('✓ Заявка '+req.id+' сохранена ('+fio+')');
 }
@@ -78,5 +83,4 @@ function issueKeyFor(reqId){
   document.getElementById('customSettings').style.display='block';
   document.getElementById('customExports').value=t?t.exports:1;
   document.getElementById('customDesc').value='Заявка '+r.id+' — '+r.fio;
-  document.getElementById('keyEmail').value=r.email;
-  document.getElementById
+  document.getElementById('keyEmail').value=r.ema

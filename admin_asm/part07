@@ -1,4 +1,5 @@
-('keyDevices').value=t?t.devices:1;
+il;
+  document.getElementById('keyDevices').value=t?t.devices:1;
   document.getElementById('keyNoExpiry').checked=false;
   document.getElementById('keyExpiryDate').disabled=false;
   const d=new Date();d.setDate(d.getDate()+(t?t.days:30));
@@ -71,4 +72,6 @@ function renderOverview(){
   let h='';
   reqs.filter(r=>r.status==='new').forEach(r=>{
     const t=tariffById(r.tariffId);
-    h+=`<div class="attn-item">📨 <b>${esc(r.fio)}</b> (${esc(r.email)}) — новая заявка ${r.id}, ${t?esc(t.name)+' · '+fmtMoney(t.price):''}, $
+    h+=`<div class="attn-item">📨 <b>${esc(r.fio)}</b> (${esc(r.email)}) — новая заявка ${r.id}, ${t?esc(t.name)+' · '+fmtMoney(t.price):''}, ${fmtDate(r.createdAt)}. Ждёт оплаты / подтверждения.</div>`;
+  });
+  reqs.filter(r

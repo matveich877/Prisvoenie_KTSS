@@ -1,4 +1,8 @@
-dminRequests')||'[]')}catch(e){return[]}}
+sNaN(d)?'—':d.toLocaleDateString('ru-RU')}
+function fmtDateTime(iso){if(!iso)return '—';const d=new Date(iso);return isNaN(d)?'—':d.toLocaleString('ru-RU')}
+
+// ===== Хранилище =====
+function getRequests(){try{return JSON.parse(localStorage.getItem('adminRequests')||'[]')}catch(e){return[]}}
 function saveRequests(l){localStorage.setItem('adminRequests',JSON.stringify(l))}
 function getKeys(){try{return JSON.parse(localStorage.getItem('adminKeys')||'{}')}catch(e){return{}}}
 function saveKeys(k){localStorage.setItem('adminKeys',JSON.stringify(k))}
@@ -91,8 +95,3 @@ function addRequest(){
     channel:document.getElementById('reqChannel').value,
     comment:document.getElementById('reqComment').value.trim(),
     status:'new',
-    paidAt:null, issuedAt:null, closedAt:null,
-    keyCode:null
-  };
-  const list=getRequests();list.unshift(req);saveRequests(list);
-  ['r

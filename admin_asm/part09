@@ -1,4 +1,4 @@
-];
+!!activations[c];
     return true;
   });
   if (!entries.length) { el.innerHTML = '<p style="color:#6b7280">Ключей пока нет</p>'; return; }
@@ -67,6 +67,7 @@ function exportAllStats() {
 // ===== Инициализация =====
 document.getElementById('keyType').addEventListener('change', (e) => {
   document.getElementById('customSettings').style.display = e.target.value === 'custom' ? 'block' : 'none';
+  document.getElementById('orgSettings').style.display = e.target.value === 'org' ? 'block' : 'none';
 });
 if (sessionStorage.getItem('adminAuth') === 'true') {
   setDefaultExpiryDate();

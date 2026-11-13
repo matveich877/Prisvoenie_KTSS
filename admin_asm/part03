@@ -1,13 +1,4 @@
-iv>
-    <div id="requestsList"></div>
-  </div>
-</section>
-
-<!-- ================= КЛЮЧИ ================= -->
-<section id="tab-keys" style="display:none">
-  <div class="card">
-    <h2>🔑 Генерация нового ключа</h2>
-    <div id="pendingReqBanner" style="display:none" class="hint info"></div>
+ id="pendingReqBanner" style="display:none" class="hint info"></div>
     <div class="hint">ℹ Ключи с криптоподписью: работают на любом устройстве клиента, коммитить на сайт НЕ нужно. Отправьте ключ оплатившему. Если генерируете из заявки — email и параметры подставятся сами, ключ прикрепится к заявке автоматически.</div>
     <div class="grid" style="margin-top:12px">
       <div>
@@ -17,6 +8,7 @@ iv>
           <option value="premium">Премиум (100 выгрузок)</option>
           <option value="universal">Универсальный (безлимит)</option>
           <option value="custom">Свои настройки</option>
+          <option value="org">Организация (кабинет, подписка)</option>
         </select>
       </div>
       <div>
@@ -44,6 +36,19 @@ iv>
           <input type="text" id="customDesc" placeholder="Например: Для Иванова И.И.">
         </div>
       </div>
+    </div>
+    <div id="orgSettings" style="display:none;margin-top:12px">
+      <div class="grid">
+        <div>
+          <label>Количество профилей судей (0 = безлимит)</label>
+          <input type="number" id="orgProfiles" value="40" min="0">
+        </div>
+        <div>
+          <label>Описание</label>
+          <input type="text" id="orgDesc" placeholder="Например: СК Республики Башкортостан">
+        </div>
+      </div>
+      <div style="margin-top:8px;font-size:13px;color:#6b7280">Выгрузки безлимитные, привязки к устройству нет. В слоте лимита хранится число профилей — оно же отображается в кабинете.</div>
     </div>
     <button class="btn btn-ok" onclick="generateKey()" style="margin-top:12px">🎲 Сгенерировать ключ</button>
     <div id="generatedKey" style="margin-top:12px"></div>
@@ -80,6 +85,4 @@ iv>
     <h2>🗑 Опасная зона</h2>
     <div class="hint">⚠ Данные хранятся в localStorage этого браузера. При очистке восстановить их будет нельзя — перед чисткой сделайте экспорт CSV.</div>
     <div style="margin-top:10px">
-      <button class="btn btn-warn btn-sm" onclick="if(confirm('Очистить статистику активаций?')){localStorage.removeItem('activations');localStorage.removeItem('localStats');renderAll();}">Очистить статистику</button>
-      <button class="btn btn-warn btn-sm" onclick="if(confirm('Удалить ВСЕ ключи?')){localStorage.removeItem('adminKeys');renderAll();}">Удалить все ключи</button>
-      <button class="btn btn-warn btn-sm" onclick="if(confirm('Удалить ВСЕ заявки?')){localStorage.remov
+      <button class="btn btn-warn btn-sm" onclick="if(confirm('Очистить статистику активаций?')){localStorage.removeItem('ac

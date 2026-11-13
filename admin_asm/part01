@@ -56,4 +56,5 @@ th { background: #f3f4f6; }
 .req-card.st-paid { border-left-color: #f59e0b; }
 .req-card.st-issued { border-left-color: #16a34a; }
 .req-card.st-closed { border-left-color: #9ca3af; opacity: .8; }
-.req-card.st-rejected { border-left-color: #dc2626; opa
+.req-card.st-rejected { border-left-color: #dc2626; opacity: .8; }
+.req-head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap

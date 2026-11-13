@@ -1,6 +1,4 @@
-{fmtDate(r.createdAt)}. Ждёт оплаты / подтверждения.</div>`;
-  });
-  reqs.filter(r=>r.status==='paid').forEach(r=>{
+=>r.status==='paid').forEach(r=>{
     h+=`<div class="attn-item">💰 <b>${esc(r.fio)}</b> — заявка ${r.id} ОПЛАЧЕНА ${fmtDate(r.paidAt)}, ключ ещё не выдан! <a href="#" onclick="issueKeyFor('${r.id}');return false" style="color:#1e40af">Выдать ключ →</a></div>`;
   });
   if(!h)h='<div class="attn-item ok">✓ Всё обработано, незакрытых заявок нет.</div>';
@@ -20,7 +18,7 @@ function generateKey() {
     const today = new Date(); today.setHours(0,0,0,0);
     if (selectedDate < today && !confirm('⚠️ Выбранная дата уже прошла. Ключ будет сразу считаться истёкшим. Продолжить?')) return;
   }
-  const typeMap = {test:'T', premium:'P', universal:'U', custom:'C'};
+  const typeMap = {test:'T', premium:'P', universal:'U', custom:'C', org:'O'};
   const nonce = Math.random().toString(36).substring(2, 8).toUpperCase();
   const expCompact = noExpiryChecked ? '0' : expiryDate.replace(/-/g, '');
   let maxExports, description;
@@ -29,6 +27,7 @@ function generateKey() {
     case 'premium': maxExports = 100; description = `Премиум ключ${email ? ' для ' + email : ''}`; break;
     case 'universal': maxExports = -1; description = `Универсальный безлимит${email ? ' для ' + email : ''}`; break;
     case 'custom': maxExports = parseInt(document.getElementById('customExports').value); description = document.getElementById('customDesc').value || `Ключ${email ? ' для ' + email : ''}`; break;
+    case 'org': maxExports = parseInt(document.getElementById('orgProfiles').value)||0; description = document.getElementById('orgDesc').value || `Организация${email ? ' для ' + email : ''}`; break;
   }
   const keyCode = makeSignedKey(typeMap[type], maxExports, expCompact, devices, nonce);
   const keys = getKeys();
@@ -71,4 +70,4 @@ function renderKeys() {
     const expired=new Date(d.expiresAt)<new Date();
     if(flt==='active')return !expired;
     if(flt==='expired')return expired;
-    if(flt==='activated')return !!activations[c
+    if(flt==='activated')return 

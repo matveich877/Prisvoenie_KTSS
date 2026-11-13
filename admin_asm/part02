@@ -1,5 +1,4 @@
-city: .8; }
-.req-head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px; }
+; gap: 8px; }
 .req-name { font-size: 15px; font-weight: 700; }
 .req-meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
 .req-body { margin-top: 8px; font-size: 13px; line-height: 1.6; }
@@ -75,4 +74,13 @@ city: .8; }
       <div style="flex:1"><label>Поиск (ФИО, email, регион)</label><input id="fltSearch" placeholder="введите текст…" oninput="renderRequests()"></div>
       <div><button class="btn btn-sec" onclick="renderRequests()">🔄 Обновить</button></div>
       <div><button class="btn btn-sec" onclick="exportRequests()">📥 Экспорт заявок (CSV)</button></div>
-    </d
+    </div>
+    <div id="requestsList"></div>
+  </div>
+</section>
+
+<!-- ================= КЛЮЧИ ================= -->
+<section id="tab-keys" style="display:none">
+  <div class="card">
+    <h2>🔑 Генерация нового ключа</h2>
+    <div

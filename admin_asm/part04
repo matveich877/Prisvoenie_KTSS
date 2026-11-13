@@ -1,4 +1,6 @@
-eItem('adminRequests');renderAll();}">Удалить все заявки</button>
+tivations');localStorage.removeItem('localStats');renderAll();}">Очистить статистику</button>
+      <button class="btn btn-warn btn-sm" onclick="if(confirm('Удалить ВСЕ ключи?')){localStorage.removeItem('adminKeys');renderAll();}">Удалить все ключи</button>
+      <button class="btn btn-warn btn-sm" onclick="if(confirm('Удалить ВСЕ заявки?')){localStorage.removeItem('adminRequests');renderAll();}">Удалить все заявки</button>
     </div>
   </div>
 </section>
@@ -52,8 +54,4 @@ const TARIFFS = [
 function tariffById(id){return TARIFFS.find(t=>t.id===id)||null}
 function fmtMoney(n){return (n||0).toLocaleString('ru-RU')+' ₽'}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-function fmtDate(iso){if(!iso)return '—';const d=new Date(iso);return isNaN(d)?'—':d.toLocaleDateString('ru-RU')}
-function fmtDateTime(iso){if(!iso)return '—';const d=new Date(iso);return isNaN(d)?'—':d.toLocaleString('ru-RU')}
-
-// ===== Хранилище =====
-function getRequests(){try{return JSON.parse(localStorage.getItem('a
+function fmtDate(iso){if(!iso)return '—';const d=new Date(iso);return i
